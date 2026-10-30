@@ -223,16 +223,20 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
             ) {
                 itemsIndexed(lines) { i, l ->
                     val on = i == active
-                    MText(
-                        l.text.ifEmpty { "♪" }, 26,
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                app.player.seekTo(l.timeMs)
-                            },
-                        color = if (on) c.accent else c.inactive,
-                        weight = if (on) FontWeight.SemiBold else FontWeight.Light
-                    )
+                    if (on && l.text.isEmpty()) {
+                        NoteGif(96.dp, Modifier.padding(vertical = 4.dp))
+                    } else {
+                        MText(
+                            l.text.ifEmpty { "♪" }, 26,
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                                    app.player.seekTo(l.timeMs)
+                                },
+                            color = if (on) c.accent else c.inactive,
+                            weight = if (on) FontWeight.SemiBold else FontWeight.Light
+                        )
+                    }
                 }
                 item { actions() }
             }

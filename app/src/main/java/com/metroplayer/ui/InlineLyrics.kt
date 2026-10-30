@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,7 +19,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import android.os.Build
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
+import com.metroplayer.R
 import com.metroplayer.MetroApp
 import com.metroplayer.data.Lyrics
 import com.metroplayer.data.LrcParser
@@ -31,6 +40,25 @@ fun rememberLyrics(app: MetroApp, trackId: Long?): Lyrics? {
         value = null
         value = if (trackId == null) null else app.lyrics.load(trackId)?.let { LrcParser.parse(it) }
     }.value
+}
+
+/** Гифка вместо «♪», когда в текущей строке нет слов (проигрыш/вступление). */
+@Composable
+fun NoteGif(size: Dp, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    val loader = remember {
+        ImageLoader.Builder(ctx)
+            .components {
+                if (Build.VERSION.SDK_INT >= 28) add(ImageDecoderDecoder.Factory()) else add(GifDecoder.Factory())
+            }
+            .build()
+    }
+    AsyncImage(
+        model = R.raw.note_gif,
+        imageLoader = loader,
+        contentDescription = null,
+        modifier = modifier.size(size)
+    )
 }
 
 private fun activeIndex(l: Lyrics, posMs: Long): Int =
@@ -55,7 +83,8 @@ fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit) {
                 val i = activeIndex(lyrics, pos)
                 val cur = lyrics.lines.getOrNull(i)?.text.orEmpty()
                 val next = lyrics.lines.getOrNull(i + 1)?.text.orEmpty()
-                MText(cur.ifEmpty { "♪" }, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
+                if (cur.isEmpty()) NoteGif(48.dp)
+                else MText(cur, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
                 MText(next, 16, Modifier.fillMaxWidth().padding(top = 4.dp), color = c.subtle, maxLines = 1, align = TextAlign.Center)
             }
         }
@@ -97,6 +126,10 @@ fun LyricsCoverPanel(lyrics: Lyrics?, pos: Long, onToggle: () -> Unit, onOpen: (
                 Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                     for (k in from until to) {
                         val on = k == i
+                        if (on && lyrics.lines[k].text.isEmpty()) {
+                            NoteGif(72.dp, Modifier.padding(vertical = 5.dp))
+                            continue
+                        }
                         MText(
                             lyrics.lines[k].text.ifEmpty { "♪" }, if (on) 24 else 18,
                             Modifier.fillMaxWidth().padding(vertical = 5.dp),
