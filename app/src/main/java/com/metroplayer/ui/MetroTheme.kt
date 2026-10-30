@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
+import com.metroplayer.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
@@ -20,7 +21,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -181,12 +184,17 @@ fun Modifier.skinBorder(width: Dp, color: Color): Modifier {
 }
 
 /**
- * Шрифт. В концепте Segoe UI / Open Sans. На Android берём системный Sans (Roboto) —
- * он имеет тот же Light-вес. Чтобы поставить Open Sans: положите OpenSans-Light.ttf,
- * OpenSans-Regular.ttf, OpenSans-SemiBold.ttf в res/font и замените значение ниже на
- * FontFamily(Font(R.font.opensans_light, FontWeight.Light), ...).
+ * Шрифт Segoe UI (res/font: segoe_ui, segoe_ui_bold, segoe_ui_italic, segoe_ui_bold_italic).
+ * Light/SemiBold отдельными файлами нет — Compose берёт ближайшее начертание (Regular / Bold).
+ * Символы, которых нет в файле шрифта (например кириллица, если шрифт урезан), Android
+ * автоматически рисует системным шрифтом.
  */
-val MetroFont: FontFamily = FontFamily.SansSerif
+val MetroFont: FontFamily = FontFamily(
+    Font(R.font.segoe_ui, FontWeight.Normal),
+    Font(R.font.segoe_ui_italic, FontWeight.Normal, FontStyle.Italic),
+    Font(R.font.segoe_ui_bold, FontWeight.Bold),
+    Font(R.font.segoe_ui_bold_italic, FontWeight.Bold, FontStyle.Italic)
+)
 
 @Composable
 fun MText(
