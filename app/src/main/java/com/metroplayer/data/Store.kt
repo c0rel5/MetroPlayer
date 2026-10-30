@@ -20,6 +20,10 @@ class Store(context: Context) {
     var accent by mutableIntStateOf(prefs.getInt("accent", 0))
         private set
 
+    // 0 — синхронно (автопрокрутка, тап по строке — перемотка), 1 — выделение (статичный текст, можно копировать)
+    var lyricsMode by mutableIntStateOf(prefs.getInt("lyricsMode", 0))
+        private set
+
     var favorites by mutableStateOf(readIds("fav").toSet())
         private set
 
@@ -39,6 +43,11 @@ class Store(context: Context) {
     fun setAccent(argb: Int) {
         accent = argb
         prefs.edit().putInt("accent", argb).apply()
+    }
+
+    fun chooseLyricsMode(v: Int) {
+        lyricsMode = v
+        prefs.edit().putInt("lyricsMode", v).apply()
     }
 
     fun isFavorite(id: Long) = id in favorites

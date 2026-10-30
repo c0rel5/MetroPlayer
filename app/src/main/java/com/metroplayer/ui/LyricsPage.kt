@@ -7,6 +7,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -127,59 +131,83 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
 
     val lyrics = remember(text) { LrcParser.parse(text) }
     val lines = lyrics.lines
-    val active = if (lyrics.synced) lines.indexOfLast { it.timeMs <= pos } else -1
-    val listState = rememberLazyListState()
+    val selectMode = app.store.lyricsMode == 1 || !lyrics.synced
 
-    LaunchedEffect(active) {
-        if (active >= 0) listState.animateScrollToItem((active - 2).coerceAtLeast(0))
+    val actions: @Composable () -> Unit = {
+        Column(Modifier.padding(top = 20.dp)) {
+            LinkText(if (busy) "поиск…" else "найти заново") { search() }
+            LinkText("выбрать файл .lrc / .txt") { picker.launch(arrayOf("*/*")) }
+            LinkText("удалить текст") {
+                scope.launch {
+                    app.lyrics.delete(track.id)
+                    raw = null
+                }
+            }
+            msg?.let { MText(it, 16, Modifier.padding(top = 8.dp), color = c.accent) }
+        }
     }
 
-    LazyColumn(
-        Modifier.fillMaxSize(),
-        state = listState,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        item {
-            MText(
-                if (lyrics.synced) "синхронизировано" else "обычный текст",
-                12, color = c.subtle, weight = FontWeight.SemiBold, spacing = 2f
-            )
+    Column(Modifier.fillMaxSize()) {
+        // переключатель режима
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            listOf("синхронно" to 0, "выделение" to 1).forEach { (label, mode) ->
+                MText(
+                    label, 18,
+                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                        app.store.chooseLyricsMode(mode)
+                    },
+                    color = if (app.store.lyricsMode == mode) c.accent else c.inactive
+                )
+            }
         }
-        itemsIndexed(lines) { i, l ->
-            val on = i == active
-            MText(
-                l.text.ifEmpty { "♪" }, if (lyrics.synced) 26 else 20,
+
+        if (selectMode) {
+            // Статичный текст: долгое нажатие выделяет слова, можно копировать.
+            Column(
                 Modifier
+                    .weight(1f)
                     .fillMaxWidth()
-                    .then(
-                        if (lyrics.synced) {
-                            Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                app.player.seekTo(l.timeMs)
-                            }
-                        } else {
-                            Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
+            ) {
+                SelectionContainer {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        lines.forEach { l ->
+                            MText(l.text.ifEmpty { " " }, 20, Modifier.fillMaxWidth(), color = c.fg)
                         }
-                    ),
-                color = when {
-                    !lyrics.synced -> c.fg
-                    on -> c.accent
-                    else -> c.inactive
-                },
-                weight = if (on) FontWeight.SemiBold else FontWeight.Light
-            )
-        }
-        item {
-            Column(Modifier.padding(top = 20.dp)) {
-                LinkText(if (busy) "поиск…" else "найти заново") { search() }
-                LinkText("выбрать файл .lrc / .txt") { picker.launch(arrayOf("*/*")) }
-                LinkText("удалить текст") {
-                    scope.launch {
-                        app.lyrics.delete(track.id)
-                        raw = null
                     }
                 }
-                msg?.let { MText(it, 16, Modifier.padding(top = 8.dp), color = c.accent) }
+                actions()
+            }
+        } else {
+            val active = lines.indexOfLast { it.timeMs <= pos }
+            val listState = rememberLazyListState()
+            LaunchedEffect(active) {
+                if (active >= 0) listState.animateScrollToItem((active - 2).coerceAtLeast(0))
+            }
+            LazyColumn(
+                Modifier.weight(1f).fillMaxWidth(),
+                state = listState,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                itemsIndexed(lines) { i, l ->
+                    val on = i == active
+                    MText(
+                        l.text.ifEmpty { "♪" }, 26,
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                                app.player.seekTo(l.timeMs)
+                            },
+                        color = if (on) c.accent else c.inactive,
+                        weight = if (on) FontWeight.SemiBold else FontWeight.Light
+                    )
+                }
+                item { actions() }
             }
         }
     }

@@ -32,6 +32,13 @@ class PlaybackService : MediaSessionService() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         session = MediaSession.Builder(this, player).setSessionActivity(openApp).build()
+
+        // иконка ноты + цвет акцента (0 — стандартный синий Metro)
+        setMediaNotificationProvider(
+            MetroNotificationProvider(this) {
+                (application as MetroApp).store.accent.takeIf { it != 0 } ?: 0xFF1BA1E2.toInt()
+            }
+        )
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session

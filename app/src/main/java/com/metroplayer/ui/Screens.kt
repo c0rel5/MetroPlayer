@@ -468,6 +468,19 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
             }
         }
 
+        MText("текст песен", 14, color = c.subtle)
+        Row(Modifier.padding(top = 6.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            listOf("синхронно" to 0, "выделение" to 1).forEach { (label, mode) ->
+                MText(
+                    label, 22,
+                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                        store.chooseLyricsMode(mode)
+                    },
+                    color = if (store.lyricsMode == mode) c.accent else c.inactive
+                )
+            }
+        }
+
         MText("цвет акцента", 14, color = c.subtle)
         MText(
             "изменить в «о приложении»", 22,
