@@ -29,11 +29,13 @@ class Store(context: Context) {
     var playlists by mutableStateOf(readPlaylists())
         private set
 
+    @JvmName("applyThemeMode")
     fun setThemeMode(v: Int) {
         themeMode = v
         prefs.edit().putInt("theme", v).apply()
     }
 
+    @JvmName("applyAccent")
     fun setAccent(argb: Int) {
         accent = argb
         prefs.edit().putInt("accent", argb).apply()
