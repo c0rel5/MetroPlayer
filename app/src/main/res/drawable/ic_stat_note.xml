@@ -3,15 +3,34 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- кольцо шара Windows 7 -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M9,18V5l11,-2v13"
+        android:pathData="M12,12m-10.2,0a10.2,10.2 0,1 1,20.4 0a10.2,10.2 0,1 1,-20.4 0"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="2" />
+        android:strokeWidth="1.6" />
+    <!-- блик на ободке -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M6,15a3,3 0,1 1,0 6a3,3 0,1 1,0 -6" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M17,13a3,3 0,1 1,0 6a3,3 0,1 1,0 -6" />
+        android:fillColor="#00000000"
+        android:pathData="M6.2,7.4A7.6,7.6 0,0 1,12 4.4"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.1"
+        android:strokeLineCap="round" />
+    <!-- нота -->
+    <group
+        android:translateX="5.1"
+        android:translateY="4.8"
+        android:scaleX="0.6"
+        android:scaleY="0.6">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M9,18V5l11,-2v13"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="2.8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M6,15a3,3 0,1 1,0 6a3,3 0,1 1,0 -6M17,13a3,3 0,1 1,0 6a3,3 0,1 1,0 -6" />
+    </group>
 </vector>

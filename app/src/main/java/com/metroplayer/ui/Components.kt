@@ -47,7 +47,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -96,10 +99,22 @@ object Ic {
 @Composable
 fun MetroIcon(path: String, iconSize: Dp, color: Color, modifier: Modifier = Modifier) {
     val parsed = remember(path) { PathParser().parsePathString(path).toPath() }
+    val skin = Metro.colors.skin
+    val soft = skin != 0                       // скругления у всех скинов кроме Metro
+    val solid = skin == 1 || skin == 2         // Windows 7 / Aero: «залитые» глянцевые значки
+    val fillable = solid && (path == Ic.PLAY || path == Ic.PREV || path == Ic.NEXT)
     Canvas(modifier.size(iconSize)) {
         val s = this.size.minDimension / 24f
         withTransform({ scale(s, s, Offset.Zero) }) {
-            drawPath(parsed, color, style = Stroke(width = 2f, cap = StrokeCap.Butt, join = StrokeJoin.Miter))
+            if (fillable) drawPath(parsed, color)
+            drawPath(
+                parsed, color,
+                style = Stroke(
+                    width = if (solid && path == Ic.PAUSE) 3.4f else 2f,
+                    cap = if (soft) StrokeCap.Round else StrokeCap.Butt,
+                    join = if (soft) StrokeJoin.Round else StrokeJoin.Miter
+                )
+            )
         }
     }
 }
@@ -160,14 +175,46 @@ fun MetroCircleButton(
     color: Color,
     onClick: () -> Unit
 ) {
-    Box(
-        Modifier
-            .size(size)
-            .metroPress(onClick = onClick)
-            .border(2.dp, color, CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        MetroIcon(path, iconSize, color)
+    val skin = Metro.colors.skin
+    if (skin == 1 || skin == 2) {
+        // Windows 7 / Aero: глянцевая «стеклянная» кнопка-шар, как в проигрывателе Windows Media Player 12
+        val acc = Metro.colors.accent
+        Box(
+            Modifier
+                .size(size)
+                .metroPress(onClick = onClick)
+                .clip(CircleShape)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(lerp(acc, Color.White, 0.40f), acc, lerp(acc, Color.Black, 0.30f))
+                    )
+                )
+                .border(1.5.dp, Color.White.copy(alpha = 0.85f), CircleShape)
+                .drawWithContent {
+                    // блик на верхней половине шара
+                    drawOval(
+                        brush = Brush.verticalGradient(
+                            listOf(Color.White.copy(alpha = 0.70f), Color.White.copy(alpha = 0.08f))
+                        ),
+                        topLeft = Offset(this.size.width * 0.12f, this.size.height * 0.04f),
+                        size = Size(this.size.width * 0.76f, this.size.height * 0.48f)
+                    )
+                    drawContent()
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            MetroIcon(path, iconSize, Color.White)
+        }
+    } else {
+        Box(
+            Modifier
+                .size(size)
+                .metroPress(onClick = onClick)
+                .border(2.dp, color, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            MetroIcon(path, iconSize, color)
+        }
     }
 }
 
