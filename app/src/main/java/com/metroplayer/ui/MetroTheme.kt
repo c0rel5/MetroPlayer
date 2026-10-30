@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -184,16 +183,14 @@ fun Modifier.skinBorder(width: Dp, color: Color): Modifier {
 }
 
 /**
- * Шрифт Segoe UI (res/font: segoe_ui, segoe_ui_bold, segoe_ui_italic, segoe_ui_bold_italic).
- * Light/SemiBold отдельными файлами нет — Compose берёт ближайшее начертание (Regular / Bold).
- * Символы, которых нет в файле шрифта (например кириллица, если шрифт урезан), Android
- * автоматически рисует системным шрифтом.
+ * Шрифт Segoe UI Unicode (res/font/segoe_ui_unicode.otf) — есть кириллица и символы (♪ • … —).
+ * Файл один (Regular): жирное начертание Android/Compose дорисовывает синтетически,
+ * тонкого (Light) начертания нет — используется Regular.
+ * Чтобы получить настоящие Light/SemiBold/Bold, положите файлы в res/font и добавьте их сюда:
+ * Font(R.font.segoe_ui_light, FontWeight.Light) и т.д.
  */
 val MetroFont: FontFamily = FontFamily(
-    Font(R.font.segoe_ui, FontWeight.Normal),
-    Font(R.font.segoe_ui_italic, FontWeight.Normal, FontStyle.Italic),
-    Font(R.font.segoe_ui_bold, FontWeight.Bold),
-    Font(R.font.segoe_ui_bold_italic, FontWeight.Bold, FontStyle.Italic)
+    Font(R.font.segoe_ui_unicode, FontWeight.Normal)
 )
 
 @Composable
