@@ -16,6 +16,10 @@ class Store(context: Context) {
     var themeMode by mutableIntStateOf(prefs.getInt("theme", 1))
         private set
 
+    // Скин: 0 — Metro, 1 — Windows 7, 2 — Aero, 3 — Material You
+    var skin by mutableIntStateOf(prefs.getInt("skin", 0))
+        private set
+
     // ARGB, 0 — цвет по умолчанию для темы
     var accent by mutableIntStateOf(prefs.getInt("accent", 0))
         private set
@@ -47,6 +51,11 @@ class Store(context: Context) {
     fun setAccent(argb: Int) {
         accent = argb
         prefs.edit().putInt("accent", argb).apply()
+    }
+
+    fun chooseSkin(v: Int) {
+        skin = v
+        prefs.edit().putInt("skin", v).apply()
     }
 
     fun chooseNowMode(v: Int) {

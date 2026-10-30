@@ -78,7 +78,7 @@ private fun FlipTile(
         Modifier
             .size(w, h)
             .metroPress(tilt = true, onClick = { face = (face + 1) % count })
-            .background(color)
+            .skinBg(color)
             .clipToBounds()
     ) {
         AnimatedContent(

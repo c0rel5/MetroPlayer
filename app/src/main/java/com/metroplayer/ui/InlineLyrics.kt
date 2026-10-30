@@ -100,7 +100,7 @@ fun LyricsCoverPanel(lyrics: Lyrics?, pos: Long, onToggle: () -> Unit, onOpen: (
     val c = Metro.colors
     Box(
         modifier
-            .background(c.fg.copy(alpha = 0.07f))
+            .skinBg(c.fg.copy(alpha = 0.07f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onToggle)
             .padding(16.dp),
         contentAlignment = Alignment.Center

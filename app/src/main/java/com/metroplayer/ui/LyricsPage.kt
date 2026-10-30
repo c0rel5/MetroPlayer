@@ -41,7 +41,7 @@ private fun TextButton(label: String, enabled: Boolean = true, onClick: () -> Un
         Modifier
             .padding(top = 14.dp)
             .metroPress(onClick = { if (enabled) onClick() })
-            .border(2.dp, if (enabled) c.fg else c.inactive)
+            .skinBorder(2.dp, if (enabled) c.fg else c.inactive)
             .padding(horizontal = 22.dp, vertical = 10.dp),
         color = if (enabled) c.fg else c.inactive
     )

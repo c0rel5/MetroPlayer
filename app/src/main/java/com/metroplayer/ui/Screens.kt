@@ -91,7 +91,7 @@ private fun Tile(
         Modifier
             .size(w, h)
             .metroPress(tilt = true, onClick = onClick)
-            .background(color)
+            .skinBg(color)
             .padding(12.dp)
     ) {
         Box(Modifier.align(Alignment.TopStart)) { top() }
@@ -127,7 +127,7 @@ private fun LiveTile(app: MetroApp, w: Dp, h: Dp, onClick: () -> Unit) {
         Modifier
             .size(w, h)
             .metroPress(tilt = true, onClick = onClick)
-            .background(tileColor)
+            .skinBg(tileColor)
             .clipToBounds()
     ) {
         AnimatedContent(
@@ -329,7 +329,7 @@ private fun SearchBar(query: String, onChange: (String) -> Unit, onClose: () -> 
         Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.weight(1f).border(2.dp, c.fg).padding(10.dp)) {
+        Box(Modifier.weight(1f).skinBorder(2.dp, c.fg).padding(10.dp)) {
             if (query.isEmpty()) MText("поиск", 20, color = c.inactive)
             BasicTextField(
                 value = query,
@@ -510,6 +510,21 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
         MText("МУЗЫКА", 12, Modifier.padding(top = 24.dp), FontWeight.SemiBold, c.subtle, spacing = 2f)
         MText("настройки", 46, Modifier.padding(top = 4.dp, bottom = 16.dp), lh = 1.1f)
 
+        MText("стиль", 14, color = c.subtle)
+        Column(Modifier.padding(top = 6.dp, bottom = 24.dp)) {
+            listOf("Metro" to 0, "Windows 7" to 1, "Aero" to 2, "Material You" to 3).forEach { (label, id) ->
+                MText(
+                    label, 22,
+                    Modifier
+                        .padding(vertical = 3.dp)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                            store.chooseSkin(id)
+                        },
+                    color = if (store.skin == id) c.accent else c.inactive
+                )
+            }
+        }
+
         MText("тема", 14, color = c.subtle)
         Row(Modifier.padding(top = 6.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             listOf("тёмная" to 1, "светлая" to 2, "системная" to 0).forEach { (label, mode) ->
@@ -579,7 +594,7 @@ fun PermissionScreen(onRequest: () -> Unit) {
             Modifier
                 .padding(top = 28.dp)
                 .metroPress(onClick = onRequest)
-                .border(2.dp, c.fg)
+                .skinBorder(2.dp, c.fg)
                 .padding(horizontal = 28.dp, vertical = 12.dp)
         )
     }
@@ -594,7 +609,7 @@ private fun MetroDialog(title: String, onDismiss: () -> Unit, content: @Composab
             Modifier
                 .fillMaxWidth()
                 .padding(24.dp)
-                .background(BarColor)
+                .skinBg(Metro.colors.barColor)
                 .padding(20.dp)
         ) {
             MText(title, 22, color = Color.White)
@@ -624,7 +639,7 @@ fun NewPlaylistDialog(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(focus)
-                .border(2.dp, Color(0xFF8A8A8A))
+                .skinBorder(2.dp, Color(0xFF8A8A8A))
                 .padding(12.dp)
         )
         Row(

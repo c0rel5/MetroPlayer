@@ -202,7 +202,7 @@ fun Cover(track: Track?, modifier: Modifier = Modifier, bg: Color = Metro.colors
     val bmp by produceState<ImageBitmap?>(initialValue = null, track?.id) {
         value = if (track == null) null else withContext(Dispatchers.IO) { loadCover(context, track) }
     }
-    Box(modifier.background(bg), contentAlignment = Alignment.Center) {
+    Box(modifier.skinBg(bg), contentAlignment = Alignment.Center) {
         val b = bmp
         if (b != null) {
             Image(bitmap = b, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -354,7 +354,7 @@ fun MetroBottomBar(
     onMid: (() -> Unit)? = null,
     left: @Composable RowScope.() -> Unit
 ) {
-    Column(modifier.fillMaxWidth().background(BarColor).navigationBarsPadding()) {
+    Column(modifier.fillMaxWidth().skinBar().navigationBarsPadding()) {
         Row(
             Modifier
                 .fillMaxWidth()
@@ -402,7 +402,7 @@ fun MetroMenu(visible: Boolean, items: List<MenuEntry>, onDismiss: () -> Unit) {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(BarColor)
+                    .skinBar()
                     .navigationBarsPadding()
                     .padding(horizontal = 24.dp, vertical = 16.dp)
             ) {

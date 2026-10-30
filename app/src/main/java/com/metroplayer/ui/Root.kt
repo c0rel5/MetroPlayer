@@ -38,7 +38,7 @@ fun MetroRoot(app: MetroApp, granted: Boolean, requestPermission: () -> Unit) {
         else -> isSystemInDarkTheme()
     }
 
-    MetroTheme(dark, store.accent) {
+    MetroTheme(dark, store.accent, store.skin) {
         val c = Metro.colors
         val view = LocalView.current
         SideEffect {
@@ -53,7 +53,13 @@ fun MetroRoot(app: MetroApp, granted: Boolean, requestPermission: () -> Unit) {
         LaunchedEffect(Unit) { app.player.connect() }
         LaunchedEffect(granted) { if (granted) app.repo.load() }
 
-        Box(Modifier.fillMaxSize().background(c.bg).statusBarsPadding()) {
+        val bgBrush = c.bgBrush
+        Box(
+            Modifier
+                .fillMaxSize()
+                .then(if (bgBrush != null) Modifier.background(bgBrush) else Modifier.background(c.bg))
+                .statusBarsPadding()
+        ) {
             if (granted) Navigator(app) else PermissionScreen(requestPermission)
         }
     }
@@ -83,13 +89,27 @@ private fun Navigator(app: MetroApp) {
                 EnterExitState.PostExit -> 70f
             }
         }
+        val sc by transition.animateFloat(transitionSpec = { tween(260) }, label = "sc") { s ->
+            when (s) {
+                EnterExitState.PreEnter -> 0.92f
+                EnterExitState.Visible -> 1f
+                EnterExitState.PostExit -> 1.05f
+            }
+        }
+        val skinId = Metro.colors.skin
         Box(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    rotationY = rot
-                    transformOrigin = TransformOrigin(0f, 0.5f)
-                    cameraDistance = 14f * density
+                    if (skinId == 0) {
+                        rotationY = rot
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                        cameraDistance = 14f * density
+                    } else {
+                        // Aero / Win7 / Material: мягкое увеличение + проявление вместо «турникета»
+                        scaleX = sc
+                        scaleY = sc
+                    }
                 }
         ) {
             ScreenHost(
