@@ -2,6 +2,10 @@ package com.metroplayer.data
 
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -60,6 +64,21 @@ object LrcParser {
 /** Тексты хранятся файлами в приватной папке приложения: lyrics/<id трека>.txt */
 class LyricsStore(private val context: Context) {
     private val dir = File(context.filesDir, "lyrics").apply { mkdirs() }
+    private val offsetPrefs = context.getSharedPreferences("lyrics_offsets", Context.MODE_PRIVATE)
+    private val offsets = mutableStateMapOf<Long, Long>()
+
+    /** Растёт при каждом сохранении/удалении — по нему экраны перечитывают текст. */
+    var version by mutableIntStateOf(0)
+        private set
+
+    /** Сдвиг синхронизации для трека, мс (плюс — текст идёт раньше). */
+    fun offset(id: Long): Long = offsets[id] ?: offsetPrefs.getLong(id.toString(), 0L)
+
+    fun nudge(id: Long, deltaMs: Long) {
+        val v = (offset(id) + deltaMs).coerceIn(-30_000L, 30_000L)
+        offsets[id] = v
+        offsetPrefs.edit().putLong(id.toString(), v).apply()
+    }
 
     private fun file(id: Long) = File(dir, "$id.txt")
 
@@ -71,19 +90,25 @@ class LyricsStore(private val context: Context) {
         }
     }
 
-    suspend fun save(id: Long, text: String) = withContext(Dispatchers.IO) {
-        try {
-            file(id).writeText(text)
-        } catch (e: Exception) {
-            // нет места — просто не сохраняем
+    suspend fun save(id: Long, text: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                file(id).writeText(text)
+            } catch (e: Exception) {
+                // нет места — просто не сохраняем
+            }
         }
+        version++
     }
 
-    suspend fun delete(id: Long) = withContext(Dispatchers.IO) {
-        try {
-            file(id).delete()
-        } catch (e: Exception) {
+    suspend fun delete(id: Long) {
+        withContext(Dispatchers.IO) {
+            try {
+                file(id).delete()
+            } catch (e: Exception) {
+            }
         }
+        version++
     }
 
     /** Читает выбранный пользователем .lrc / .txt (не больше 512 КБ). */

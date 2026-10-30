@@ -24,6 +24,10 @@ class Store(context: Context) {
     var lyricsMode by mutableIntStateOf(prefs.getInt("lyricsMode", 0))
         private set
 
+    // Экран «сейчас играет»: 0 — обложка (+ полоска текста), 1 — текст вместо обложки
+    var nowMode by mutableIntStateOf(prefs.getInt("nowMode", 0))
+        private set
+
     var favorites by mutableStateOf(readIds("fav").toSet())
         private set
 
@@ -43,6 +47,11 @@ class Store(context: Context) {
     fun setAccent(argb: Int) {
         accent = argb
         prefs.edit().putInt("accent", argb).apply()
+    }
+
+    fun chooseNowMode(v: Int) {
+        nowMode = v
+        prefs.edit().putInt("nowMode", v).apply()
     }
 
     fun chooseLyricsMode(v: Int) {

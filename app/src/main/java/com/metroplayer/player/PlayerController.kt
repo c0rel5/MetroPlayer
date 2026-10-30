@@ -2,6 +2,9 @@ package com.metroplayer.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +30,8 @@ data class PlayerState(
     val currentIndex: Int = -1,
     val queue: List<Track> = emptyList(),
     val shuffle: Boolean = false,
-    val repeatMode: Int = Player.REPEAT_MODE_OFF
+    val repeatMode: Int = Player.REPEAT_MODE_OFF,
+    val speed: Float = 1f
 )
 
 fun Track.toMediaItem(): MediaItem =
@@ -51,6 +55,16 @@ class PlayerController(
 ) {
     var state by mutableStateOf(PlayerState())
         private set
+
+    /** Выбранный таймер сна, минуты (0 — выключен). */
+    var sleepMinutes by mutableIntStateOf(0)
+        private set
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val sleepRunnable = Runnable {
+        sleepMinutes = 0
+        controller?.pause()
+    }
 
     private var controller: MediaController? = null
     private var future: ListenableFuture<MediaController>? = null
@@ -131,7 +145,8 @@ class PlayerController(
             currentIndex = c.currentMediaItemIndex,
             queue = queue,
             shuffle = c.shuffleModeEnabled,
-            repeatMode = c.repeatMode
+            repeatMode = c.repeatMode,
+            speed = c.playbackParameters.speed
         )
     }
 
@@ -185,5 +200,22 @@ class PlayerController(
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             else -> Player.REPEAT_MODE_OFF
         }
+    }
+
+    /** Таймер сна: выкл → 15 → 30 → 45 → 60 → выкл. */
+    fun cycleSleep() {
+        val steps = intArrayOf(0, 15, 30, 45, 60)
+        val next = steps[(steps.indexOf(sleepMinutes) + 1) % steps.size]
+        handler.removeCallbacks(sleepRunnable)
+        sleepMinutes = next
+        if (next > 0) handler.postDelayed(sleepRunnable, next * 60_000L)
+    }
+
+    /** Скорость: 0.75× → 1× → 1.25× → 1.5× → 2× → 0.75×. */
+    fun cycleSpeed() = withController { c ->
+        val speeds = floatArrayOf(0.75f, 1f, 1.25f, 1.5f, 2f)
+        val cur = c.playbackParameters.speed
+        val i = speeds.indexOfFirst { kotlin.math.abs(it - cur) < 0.01f }
+        c.setPlaybackSpeed(speeds[(i + 1) % speeds.size])
     }
 }

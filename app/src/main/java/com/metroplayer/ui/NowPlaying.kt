@@ -3,6 +3,8 @@ package com.metroplayer.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -25,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +36,7 @@ import androidx.media3.common.Player
 import com.metroplayer.MetroApp
 import com.metroplayer.player.PlayerState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun EmptyHint(text: String) {
@@ -46,6 +50,7 @@ fun NowPlayingScreen(app: MetroApp, push: (Screen) -> Unit, onAddToPlaylist: (Lo
     val st = app.player.state
     val store = app.store
     val pager = rememberPagerState(pageCount = { 4 })
+    val scope = rememberCoroutineScope()
     var menu by remember { mutableStateOf(false) }
     var pos by remember { mutableLongStateOf(0L) }
 
@@ -75,6 +80,15 @@ fun NowPlayingScreen(app: MetroApp, push: (Screen) -> Unit, onAddToPlaylist: (Lo
                 }
             ) { app.player.cycleRepeat() }
         )
+        add(MenuEntry(if (store.nowMode == 1) "вид: текст" else "вид: обложка") {
+            store.chooseNowMode(1 - store.nowMode)
+        })
+        add(MenuEntry("скорость: ${"%.2f".format(java.util.Locale.US, st.speed).trimEnd('0').trimEnd('.')}×") { app.player.cycleSpeed() })
+        add(
+            MenuEntry(
+                if (app.player.sleepMinutes == 0) "таймер сна: выкл" else "таймер сна: ${app.player.sleepMinutes} мин"
+            ) { app.player.cycleSleep() }
+        )
         add(MenuEntry("настройки") { push(Screen.Settings) })
     }
 
@@ -87,10 +101,15 @@ fun NowPlayingScreen(app: MetroApp, push: (Screen) -> Unit, onAddToPlaylist: (Lo
                 modifier = Modifier.weight(1f)
             ) { page ->
                 when (page) {
-                    0 -> NowPage(app, st, pos, onMore = { menu = true }, onSeek = { ms ->
-                        app.player.seekTo(ms)
-                        pos = ms
-                    })
+                    0 -> NowPage(
+                        app, st, pos,
+                        onMore = { menu = true },
+                        onSeek = { ms ->
+                            app.player.seekTo(ms)
+                            pos = ms
+                        },
+                        onOpenLyrics = { scope.launch { pager.animateScrollToPage(3) } }
+                    )
                     1 -> QueuePage(app, st)
                     2 -> HistoryPage(app)
                     else -> LyricsPage(app, st, pos)
@@ -114,10 +133,15 @@ private fun NowPage(
     st: PlayerState,
     pos: Long,
     onMore: () -> Unit,
-    onSeek: (Long) -> Unit
+    onSeek: (Long) -> Unit,
+    onOpenLyrics: () -> Unit
 ) {
     val c = Metro.colors
     val t = st.current
+    val lyrics = rememberLyrics(app, t?.id)
+    val lyricsPos = pos + (t?.let { app.lyrics.offset(it.id) } ?: 0L)
+    val showLyrics = app.store.nowMode == 1
+    val toggleView = { app.store.chooseNowMode(1 - app.store.nowMode) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val cover = (maxHeight - 300.dp).coerceIn(140.dp, maxWidth - 48.dp)
         Column(
@@ -127,7 +151,20 @@ private fun NowPage(
                 .padding(horizontal = 24.dp)
         ) {
             Spacer(Modifier.height(4.dp))
-            Cover(t, Modifier.size(cover).align(Alignment.CenterHorizontally))
+            if (showLyrics) {
+                LyricsCoverPanel(
+                    lyrics, lyricsPos, onToggle = toggleView, onOpen = onOpenLyrics,
+                    modifier = Modifier.size(cover).align(Alignment.CenterHorizontally)
+                )
+            } else {
+                Cover(
+                    t,
+                    Modifier
+                        .size(cover)
+                        .align(Alignment.CenterHorizontally)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { toggleView() }
+                )
+            }
             MText(t?.title ?: "ничего не играет", 30, Modifier.padding(top = 20.dp), maxLines = 1)
             MText(
                 if (t != null) "${t.artist} · ${t.album}" else "выберите музыку в коллекции",
@@ -147,7 +184,9 @@ private fun NowPage(
                 MetroCircleButton(72.dp, if (st.isPlaying) Ic.PAUSE else Ic.PLAY, 30.dp, c.fg) { app.player.togglePlay() }
                 MetroCircleButton(56.dp, Ic.NEXT, 24.dp, c.fg) { app.player.next() }
             }
-            Spacer(Modifier.weight(1f))
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                if (!showLyrics) LyricsStrip(lyrics, lyricsPos, onOpenLyrics)
+            }
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                 Ellipsis(c.subtle, onMore)
             }

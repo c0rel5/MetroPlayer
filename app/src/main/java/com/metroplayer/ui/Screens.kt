@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -77,8 +78,6 @@ sealed interface DialogKind {
 
 /* ═══════════════════ 2 · Живые плитки ═══════════════════ */
 
-private val TileBlue = Color(0xFF0078D7)
-
 @Composable
 private fun Tile(
     color: Color,
@@ -112,6 +111,7 @@ private fun CountTile(count: Int, label: String, color: Color, size: Dp, onClick
 private fun LiveTile(app: MetroApp, w: Dp, h: Dp, onClick: () -> Unit) {
     val st = app.player.state
     val cur = st.current
+    val tileColor = Metro.colors.accent
     var face by remember { mutableIntStateOf(0) }
     val active = cur != null
     LaunchedEffect(active) {
@@ -127,7 +127,7 @@ private fun LiveTile(app: MetroApp, w: Dp, h: Dp, onClick: () -> Unit) {
         Modifier
             .size(w, h)
             .metroPress(tilt = true, onClick = onClick)
-            .background(TileBlue)
+            .background(tileColor)
             .clipToBounds()
     ) {
         AnimatedContent(
@@ -148,7 +148,7 @@ private fun LiveTile(app: MetroApp, w: Dp, h: Dp, onClick: () -> Unit) {
                 }
             } else {
                 Box(Modifier.fillMaxSize()) {
-                    Cover(cur, Modifier.fillMaxSize(), TileBlue)
+                    Cover(cur, Modifier.fillMaxSize(), tileColor)
                     Box(
                         Modifier
                             .fillMaxWidth()
@@ -180,6 +180,11 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
         }
     }
 
+    // Все плитки — цвета акцента (как в Windows Phone), оттенки слегка различаются
+    val accent = c.accent
+    val shade1 = lerp(accent, Color.Black, 0.18f)
+    val shade2 = lerp(accent, Color.Black, 0.32f)
+
     val items = listOf(
         MenuEntry("перемешать всё") { radio() },
         MenuEntry("обновить библиотеку") { scope.launch { repo.load() } },
@@ -202,17 +207,17 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     LiveTile(app, wide, tile) { push(Screen.NowPlaying) }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CountTile(repo.artists.size, "исполнители", Color(0xFFC8101F), tile) { push(Screen.Artists) }
-                        CountTile(repo.albums.size, "альбомы", Color(0xFF3B8A00), tile) { push(Screen.Albums) }
+                        CountTile(repo.artists.size, "исполнители", shade1, tile) { push(Screen.Artists) }
+                        CountTile(repo.albums.size, "альбомы", shade2, tile) { push(Screen.Albums) }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CountTile(store.playlists.size, "плейлисты", Color(0xFFC74B00), tile) { push(Screen.Playlists) }
-                        CountTile(store.favorites.size, "избранное", Color(0xFF8A2BE2), tile) { push(Screen.Favorites) }
+                        CountTile(store.playlists.size, "плейлисты", shade2, tile) { push(Screen.Playlists) }
+                        CountTile(store.favorites.size, "избранное", shade1, tile) { push(Screen.Favorites) }
                     }
-                    Tile(Color(0xFFD80073), wide, tile, "радио", { radio() }) {
+                    Tile(shade1, wide, tile, "радио", { radio() }) {
                         MetroIcon(Ic.RADIO, 44.dp, Color.White)
                     }
-                    Tile(Color(0xFF00ABA9), wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }) {
+                    Tile(shade2, wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }) {
                         MetroIcon(Ic.NOTE, 44.dp, Color.White)
                     }
                 }
@@ -315,6 +320,36 @@ fun PlaylistsScreen(app: MetroApp, push: (Screen) -> Unit, onNewPlaylist: () -> 
     }
 }
 
+@Composable
+private fun SearchBar(query: String, onChange: (String) -> Unit, onClose: () -> Unit) {
+    val c = Metro.colors
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.weight(1f).border(2.dp, c.fg).padding(10.dp)) {
+            if (query.isEmpty()) MText("поиск", 20, color = c.inactive)
+            BasicTextField(
+                value = query,
+                onValueChange = onChange,
+                singleLine = true,
+                textStyle = TextStyle(color = c.fg, fontSize = 20.sp, fontFamily = MetroFont, fontWeight = FontWeight.Light),
+                cursorBrush = SolidColor(c.fg),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus)
+            )
+        }
+        MText(
+            "×", 32,
+            Modifier
+                .padding(start = 14.dp)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose),
+            color = c.fg
+        )
+    }
+}
+
 /** Лента форматов: «все · .flac · .mp3 …». Выбранный подсвечен акцентом. */
 @Composable
 private fun FormatChips(
@@ -372,9 +407,23 @@ fun TrackListScreen(
             .entries.sortedByDescending { it.value }
     }
     val activeFormat = formatFilter?.takeIf { f -> formatCounts.any { it.key == f } }
-    val tracks = if (activeFormat == null) allTracks else allTracks.filter { it.format == activeFormat }
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
+    val byFormat = if (activeFormat == null) allTracks else allTracks.filter { it.format == activeFormat }
+    val q = query.trim().lowercase()
+    val tracks = if (!searching || q.isEmpty()) {
+        byFormat
+    } else {
+        byFormat.filter {
+            it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) || it.album.lowercase().contains(q)
+        }
+    }
 
     val menuItems = buildList {
+        add(MenuEntry(if (searching) "закрыть поиск" else "поиск") {
+            searching = !searching
+            if (!searching) query = ""
+        })
         if (tracks.isNotEmpty()) {
             add(MenuEntry("играть всё") {
                 app.player.playTracks(tracks, 0)
@@ -410,6 +459,12 @@ fun TrackListScreen(
 
     Box(Modifier.fillMaxSize()) {
         ListFrame(app, caption, title, push, menuItems) {
+            if (searching) {
+                SearchBar(query, { query = it }) {
+                    searching = false
+                    query = ""
+                }
+            }
             if (formatCounts.size > 1) {
                 FormatChips(formatCounts.map { it.key to it.value }, allTracks.size, activeFormat) { formatFilter = it }
             }
@@ -477,6 +532,19 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
                         store.chooseLyricsMode(mode)
                     },
                     color = if (store.lyricsMode == mode) c.accent else c.inactive
+                )
+            }
+        }
+
+        MText("экран «сейчас играет»", 14, color = c.subtle)
+        Row(Modifier.padding(top = 6.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            listOf("обложка" to 0, "текст" to 1).forEach { (label, mode) ->
+                MText(
+                    label, 22,
+                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                        store.chooseNowMode(mode)
+                    },
+                    color = if (store.nowMode == mode) c.accent else c.inactive
                 )
             }
         }

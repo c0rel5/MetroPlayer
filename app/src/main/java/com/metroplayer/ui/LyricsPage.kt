@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -164,6 +165,31 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
             }
         }
 
+        if (!selectMode) {
+            val shift = app.lyrics.offset(track.id)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MText("сдвиг: " + (if (shift > 0) "+" else "") + (shift / 1000.0) + " с", 14, color = c.subtle)
+                MText(
+                    "−0.5", 18,
+                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                        app.lyrics.nudge(track.id, -500)
+                    },
+                    color = c.fg
+                )
+                MText(
+                    "+0.5", 18,
+                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                        app.lyrics.nudge(track.id, 500)
+                    },
+                    color = c.fg
+                )
+            }
+        }
+
         if (selectMode) {
             // Статичный текст: долгое нажатие выделяет слова, можно копировать.
             Column(
@@ -183,7 +209,8 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
                 actions()
             }
         } else {
-            val active = lines.indexOfLast { it.timeMs <= pos }
+            val shift = app.lyrics.offset(track.id)
+            val active = lines.indexOfLast { it.timeMs <= pos + shift }
             val listState = rememberLazyListState()
             LaunchedEffect(active) {
                 if (active >= 0) listState.animateScrollToItem((active - 2).coerceAtLeast(0))
