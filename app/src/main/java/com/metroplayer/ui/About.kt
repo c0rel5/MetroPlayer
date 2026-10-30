@@ -177,10 +177,6 @@ fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
             }
         }
 
-        // ── автор ──
-        MText("автор", 14, Modifier.padding(top = 28.dp), color = c.subtle)
-        MText("corei5", 34, Modifier.padding(top = 2.dp), color = c.accent)
-
         // ── акцент ──
         MText("цвет акцента", 14, Modifier.padding(top = 28.dp), color = c.subtle)
         Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -209,15 +205,20 @@ fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
             color = if (store.accent == 0) c.accent else c.inactive
         )
 
-        // ── гифка внизу ──
-        Spacer(Modifier.height(32.dp))
+        // ── гифка (над подписью автора) ──
+        Spacer(Modifier.height(28.dp))
         AsyncImage(
             model = R.raw.author,
             imageLoader = loader,
             contentDescription = null,
             contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(0.7f).align(Alignment.CenterHorizontally)
         )
+
+        // ── автор ──
+        MText("автор", 14, Modifier.padding(top = 20.dp), color = c.subtle)
+        MText("corei5", 34, Modifier.padding(top = 2.dp), color = c.accent)
+
         Spacer(Modifier.height(32.dp))
     }
 }

@@ -45,7 +45,7 @@ fun EmptyHint(text: String) {
 fun NowPlayingScreen(app: MetroApp, push: (Screen) -> Unit, onAddToPlaylist: (Long) -> Unit) {
     val st = app.player.state
     val store = app.store
-    val pager = rememberPagerState(pageCount = { 3 })
+    val pager = rememberPagerState(pageCount = { 4 })
     var menu by remember { mutableStateOf(false) }
     var pos by remember { mutableLongStateOf(0L) }
 
@@ -83,7 +83,7 @@ fun NowPlayingScreen(app: MetroApp, push: (Screen) -> Unit, onAddToPlaylist: (Lo
             MetroPivot(
                 state = pager,
                 caption = "МУЗЫКА",
-                titles = listOf("сейчас играет", "очередь", "история"),
+                titles = listOf("сейчас играет", "очередь", "история", "текст"),
                 modifier = Modifier.weight(1f)
             ) { page ->
                 when (page) {
@@ -92,7 +92,8 @@ fun NowPlayingScreen(app: MetroApp, push: (Screen) -> Unit, onAddToPlaylist: (Lo
                         pos = ms
                     })
                     1 -> QueuePage(app, st)
-                    else -> HistoryPage(app)
+                    2 -> HistoryPage(app)
+                    else -> LyricsPage(app, st, pos)
                 }
             }
             AnimatedVisibility(
