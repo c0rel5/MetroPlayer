@@ -519,6 +519,7 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
                         .padding(vertical = 3.dp)
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                             store.chooseSkin(id)
+                            com.metroplayer.SkinIcons.apply(app, id)
                         },
                     color = if (store.skin == id) c.accent else c.inactive
                 )

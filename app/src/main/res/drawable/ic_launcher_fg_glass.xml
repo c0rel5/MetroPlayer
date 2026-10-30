@@ -1,0 +1,94 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- тень шара -->
+    <path
+        android:fillColor="#40000A24"
+        android:pathData="M54,57m-31,0a31,31 0,1 1,62 0a31,31 0,1 1,-62 0" />
+    <!-- светлый ободок -->
+    <path android:pathData="M54,54m-31,0a31,31 0,1 1,62 0a31,31 0,1 1,-62 0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="23"
+                android:endX="54" android:endY="85">
+                <item android:offset="0" android:color="#FFFFFFFF" />
+                <item android:offset="1" android:color="#FFA8EEFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- стеклянный шар -->
+    <path android:pathData="M54,54m-28,0a28,28 0,1 1,56 0a28,28 0,1 1,-56 0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="26"
+                android:endX="54" android:endY="82">
+                <item android:offset="0" android:color="#FF7BEBFF" />
+                <item android:offset="0.5" android:color="#FF0FA6DC" />
+                <item android:offset="1" android:color="#FF034D78" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- отсвет снизу -->
+    <path android:pathData="M54,74m-18,0a18,10 0,1 1,36 0a18,10 0,1 1,-36 0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="64"
+                android:endX="54" android:endY="82">
+                <item android:offset="0" android:color="#00FFFFFF" />
+                <item android:offset="1" android:color="#553FD0FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- нота: тень -->
+    <group
+        android:translateX="37.75"
+        android:translateY="38.2"
+        android:scaleX="1.5"
+        android:scaleY="1.5">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M9,18V5l11,-2v13"
+            android:strokeColor="#66052A5E"
+            android:strokeWidth="2.2"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:fillColor="#66052A5E"
+            android:pathData="M6,15a3,3 0,1 1,0 6a3,3 0,1 1,0 -6M17,13a3,3 0,1 1,0 6a3,3 0,1 1,0 -6" />
+    </group>
+    <!-- нота -->
+    <group
+        android:translateX="36.75"
+        android:translateY="36"
+        android:scaleX="1.5"
+        android:scaleY="1.5">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M9,18V5l11,-2v13"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="2.2"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M6,15a3,3 0,1 1,0 6a3,3 0,1 1,0 -6M17,13a3,3 0,1 1,0 6a3,3 0,1 1,0 -6" />
+    </group>
+    <!-- глянцевый блик -->
+    <path android:pathData="M54,42m-22,0a22,14 0,1 1,44 0a22,14 0,1 1,-44 0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="28"
+                android:endX="54" android:endY="56">
+                <item android:offset="0" android:color="#B3FFFFFF" />
+                <item android:offset="1" android:color="#0FFFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

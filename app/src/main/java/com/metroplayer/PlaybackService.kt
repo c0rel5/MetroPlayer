@@ -35,9 +35,11 @@ class PlaybackService : MediaSessionService() {
 
         // иконка ноты + цвет акцента (0 — стандартный синий Metro)
         setMediaNotificationProvider(
-            MetroNotificationProvider(this) {
-                (application as MetroApp).store.accent.takeIf { it != 0 } ?: 0xFF1BA1E2.toInt()
-            }
+            MetroNotificationProvider(
+                this,
+                accent = { (application as MetroApp).store.accent.takeIf { it != 0 } ?: 0xFF1BA1E2.toInt() },
+                skin = { (application as MetroApp).store.skin }
+            )
         )
     }
 

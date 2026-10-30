@@ -14,11 +14,12 @@ import com.google.common.collect.ImmutableList
  */
 class MetroNotificationProvider(
     context: Context,
-    private val accent: () -> Int
+    private val accent: () -> Int,
+    private val skin: () -> Int
 ) : MediaNotification.Provider {
 
     private val base = DefaultMediaNotificationProvider(context).apply {
-        setSmallIcon(R.drawable.ic_stat_note)
+        setSmallIcon(SkinIcons.statusIcon(0))
     }
 
     override fun createNotification(
@@ -27,6 +28,8 @@ class MetroNotificationProvider(
         actionFactory: MediaNotification.ActionFactory,
         onNotificationChangedCallback: MediaNotification.Provider.Callback
     ): MediaNotification {
+        // иконка в статус-баре следует за выбранным скином
+        base.setSmallIcon(SkinIcons.statusIcon(skin()))
         val n = base.createNotification(mediaSession, customLayout, actionFactory, onNotificationChangedCallback)
         n.notification.color = accent()
         return n
