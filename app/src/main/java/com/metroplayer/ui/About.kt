@@ -3,6 +3,20 @@ package com.metroplayer.ui
 import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -104,43 +118,49 @@ private fun BoxScope.Big(text: String) =
 private fun BoxScope.Label(text: String) =
     MText(text, 16, Modifier.align(Alignment.BottomStart), FontWeight.SemiBold, Color.White, maxLines = 2)
 
-/** Маленький ASCII-арт приложения — свой для каждого стиля (0 — Metro, 1 — Windows 7, 2 — Aero, 3 — Material You). */
-private fun asciiArt(skin: Int): String = when (skin) {
-    1 -> listOf(
-        "    .-======-.    ",
-        "  .'   ,--,   '.  ",
-        " /     |  |     \\ ",
-        " |    _|  |_    | ",
-        " |   (_)  (_)   | ",
-        "  '.          .'  ",
-        "    '-......-'    ",
-        "  W I N D O W S 7 "
-    ).joinToString("\n")
-    2 -> listOf(
-        ".====================.",
-        "| Metro Player _ [] X|",
-        "|====================|",
-        "| ~~  .:::::::.  ~~  |",
-        "|  ~  ::  ^^  ::  ~  |",
-        "| ~~  ':::::::'  ~~  |",
-        "'===================='"
-    ).joinToString("\n")
-    3 -> listOf(
-        "  .----------------.   ",
-        " (   .--.            ) ",
-        " (   | > |  Metro    ) ",
-        " (   '--'   Player   ) ",
-        "  '-.-------------.-'  ",
-        "     (  ==  O  ==  )   "
-    ).joinToString("\n")
-    else -> listOf(
-        "+---------+----+----+",
-        "| ##  ##  |####|    |",
-        "| # ## #  |####|    |",
-        "|  METRO  +----+----+",
-        "|  PLAYER |    |####|",
-        "+---------+----+----+"
-    ).joinToString("\n")
+/** Слои иконки приложения для каждого стиля: (фон — null, если однотонный; передний план). */
+private fun iconLayers(skin: Int): Pair<Int?, Int> = when (skin) {
+    1 -> R.drawable.ic_launcher_background_aero to R.drawable.ic_launcher_foreground
+    2 -> R.drawable.ic_launcher_background_glass to R.drawable.ic_launcher_fg_glass
+    3 -> null to R.drawable.ic_launcher_fg_material
+    else -> null to R.drawable.ic_launcher_fg_metro
+}
+
+/** Иконка приложения выбранного стиля: Metro — плоский квадрат, Win7 — глянец, Aero — стекло, Material — «сквиркл». */
+@Composable
+private fun AppIconArt(skin: Int, size: Dp, accent: Color, modifier: Modifier = Modifier) {
+    val (bgRes, fgRes) = iconLayers(skin)
+    val shape = RoundedCornerShape(size * (if (skin == 0) 0f else if (skin == 1) 0.22f else if (skin == 2) 0.28f else 0.36f))
+    val flat = if (skin == 3) lerp(accent, Color.Black, 0.25f) else accent
+    val glossy = skin == 1 || skin == 2
+    Box(
+        modifier
+            .size(size)
+            .shadow(if (skin == 0) 0.dp else size / 10, shape, clip = false, spotColor = flat)
+            .clip(shape)
+            .then(if (glossy) Modifier.border(1.5.dp, Color.White.copy(alpha = if (skin == 2) 0.65f else 0.45f), shape) else Modifier)
+    ) {
+        // слои рисуем крупнее на 1.5×: так же, как лаунчер показывает центральную часть адаптивной иконки
+        if (bgRes != null) {
+            Image(painterResource(bgRes), null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.5f; scaleY = 1.5f })
+        } else {
+            Box(Modifier.fillMaxSize().background(flat))
+        }
+        Image(painterResource(fgRes), null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.5f; scaleY = 1.5f })
+        if (glossy) {
+            // стеклянный отблеск по диагонали
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.linearGradient(
+                        0f to Color.White.copy(alpha = 0.32f),
+                        0.45f to Color.White.copy(alpha = 0.05f),
+                        0.46f to Color.Transparent,
+                        1f to Color.Transparent
+                    )
+                )
+            )
+        }
+    }
 }
 
 private val SkinNames = listOf("Metro", "Windows 7", "Aero", "Material You")
@@ -223,20 +243,36 @@ fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
             }
         }
 
-        // ── ASCII-арт приложения (зависит от выбранного стиля) ──
-        MText("ascii · " + SkinNames.getOrElse(c.skin) { "Metro" }, 14, Modifier.padding(top = 28.dp), color = c.subtle)
-        Crossfade(targetState = c.skin, label = "asciiArt") { sk ->
-            BasicText(
-                text = asciiArt(sk),
-                modifier = Modifier.padding(top = 10.dp),
-                style = TextStyle(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 11.sp,
-                    lineHeight = 12.sp,
-                    letterSpacing = 0.sp,
-                    color = c.accent
-                )
-            )
+        // ── арт: иконка приложения выбранного стиля ──
+        val float = rememberInfiniteTransition(label = "iconFloat")
+        val dy by float.animateFloat(
+            initialValue = 0f,
+            targetValue = -8f,
+            animationSpec = infiniteRepeatable(tween(2400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "iconDy"
+        )
+        Column(
+            Modifier.fillMaxWidth().padding(top = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Crossfade(targetState = c.skin, label = "iconArt") { sk ->
+                AppIconArt(sk, 148.dp, accent, Modifier.graphicsLayer { translationY = dy.dp.toPx() })
+            }
+            MText(SkinNames.getOrElse(c.skin) { "Metro" }, 30, Modifier.padding(top = 22.dp), color = c.accent)
+            MText("значок приложения меняется вместе со стилем", 13, Modifier.padding(top = 2.dp), color = c.subtle)
+            Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                for (sk in 0..3) {
+                    AppIconArt(
+                        sk, 52.dp, accent,
+                        Modifier
+                            .alpha(if (sk == c.skin) 1f else 0.45f)
+                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                                store.chooseSkin(sk)
+                                com.metroplayer.SkinIcons.apply(app, sk)
+                            }
+                    )
+                }
+            }
         }
 
         // ── акцент ──
