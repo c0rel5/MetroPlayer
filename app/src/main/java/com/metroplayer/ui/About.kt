@@ -2,6 +2,7 @@ package com.metroplayer.ui
 
 import android.os.Build
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -37,7 +39,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.ImageLoader
@@ -98,6 +103,47 @@ private fun BoxScope.Big(text: String) =
 @Composable
 private fun BoxScope.Label(text: String) =
     MText(text, 16, Modifier.align(Alignment.BottomStart), FontWeight.SemiBold, Color.White, maxLines = 2)
+
+/** Маленький ASCII-арт приложения — свой для каждого стиля (0 — Metro, 1 — Windows 7, 2 — Aero, 3 — Material You). */
+private fun asciiArt(skin: Int): String = when (skin) {
+    1 -> listOf(
+        "    .-======-.    ",
+        "  .'   ,--,   '.  ",
+        " /     |  |     \\ ",
+        " |    _|  |_    | ",
+        " |   (_)  (_)   | ",
+        "  '.          .'  ",
+        "    '-......-'    ",
+        "  W I N D O W S 7 "
+    ).joinToString("\n")
+    2 -> listOf(
+        ".====================.",
+        "| Metro Player _ [] X|",
+        "|====================|",
+        "| ~~  .:::::::.  ~~  |",
+        "|  ~  ::  ^^  ::  ~  |",
+        "| ~~  ':::::::'  ~~  |",
+        "'===================='"
+    ).joinToString("\n")
+    3 -> listOf(
+        "  .----------------.   ",
+        " (   .--.            ) ",
+        " (   | > |  Metro    ) ",
+        " (   '--'   Player   ) ",
+        "  '-.-------------.-'  ",
+        "     (  ==  O  ==  )   "
+    ).joinToString("\n")
+    else -> listOf(
+        "+---------+----+----+",
+        "| ##  ##  |####|    |",
+        "| # ## #  |####|    |",
+        "|  METRO  +----+----+",
+        "|  PLAYER |    |####|",
+        "+---------+----+----+"
+    ).joinToString("\n")
+}
+
+private val SkinNames = listOf("Metro", "Windows 7", "Aero", "Material You")
 
 @Composable
 fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
@@ -175,6 +221,22 @@ fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
                     )
                 }
             }
+        }
+
+        // ── ASCII-арт приложения (зависит от выбранного стиля) ──
+        MText("ascii · " + SkinNames.getOrElse(c.skin) { "Metro" }, 14, Modifier.padding(top = 28.dp), color = c.subtle)
+        Crossfade(targetState = c.skin, label = "asciiArt") { sk ->
+            BasicText(
+                text = asciiArt(sk),
+                modifier = Modifier.padding(top = 10.dp),
+                style = TextStyle(
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    lineHeight = 12.sp,
+                    letterSpacing = 0.sp,
+                    color = c.accent
+                )
+            )
         }
 
         // ── акцент ──
