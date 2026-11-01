@@ -20,6 +20,14 @@ class Store(context: Context) {
     var skin by mutableIntStateOf(prefs.getInt("skin", 0))
         private set
 
+    // Автоматически искать текст песни в интернете (lrclib.net) для текущего и следующего трека
+    var autoLyrics by mutableStateOf(prefs.getBoolean("autoLyrics", true))
+        private set
+
+    // Показывать текущую строку текста в мини-плеере (уведомление / экран блокировки) вместо исполнителя
+    var lyricsInNotif by mutableStateOf(prefs.getBoolean("lyricsInNotif", true))
+        private set
+
     // ARGB, 0 — цвет по умолчанию для темы
     var accent by mutableIntStateOf(prefs.getInt("accent", 0))
         private set
@@ -51,6 +59,16 @@ class Store(context: Context) {
     fun setAccent(argb: Int) {
         accent = argb
         prefs.edit().putInt("accent", argb).apply()
+    }
+
+    fun chooseAutoLyrics(v: Boolean) {
+        autoLyrics = v
+        prefs.edit().putBoolean("autoLyrics", v).apply()
+    }
+
+    fun chooseLyricsInNotif(v: Boolean) {
+        lyricsInNotif = v
+        prefs.edit().putBoolean("lyricsInNotif", v).apply()
     }
 
     fun chooseSkin(v: Int) {

@@ -2,7 +2,12 @@ package com.metroplayer.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.metroplayer.MetroApp
@@ -70,7 +77,7 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
     var busy by remember(track?.id) { mutableStateOf(false) }
     var msg by remember(track?.id) { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(track?.id) {
+    LaunchedEffect(track?.id, app.lyrics.version) {
         raw = track?.let { app.lyrics.load(it.id) }
         loaded = true
     }
@@ -212,13 +219,23 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
             val shift = app.lyrics.offset(track.id)
             val active = lines.indexOfLast { it.timeMs <= pos + shift }
             val listState = rememberLazyListState()
+            // Плавная прокрутка: активная строка мягко «плывёт» примерно на треть высоты экрана
             LaunchedEffect(active) {
-                if (active >= 0) listState.animateScrollToItem((active - 2).coerceAtLeast(0))
+                if (active < 0) return@LaunchedEffect
+                val info = listState.layoutInfo
+                val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
+                val item = info.visibleItemsInfo.firstOrNull { it.index == active }
+                if (item != null) {
+                    val delta = item.offset + item.size / 2f - viewport * 0.35f
+                    listState.animateScrollBy(delta, tween(650, easing = FastOutSlowInEasing))
+                } else {
+                    listState.animateScrollToItem(active, -(viewport * 0.3f).toInt())
+                }
             }
             LazyColumn(
                 Modifier.weight(1f).fillMaxWidth(),
                 state = listState,
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 24.dp, vertical = 8.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 240.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 itemsIndexed(lines) { i, l ->
@@ -226,15 +243,22 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
                     if (on && l.text.isEmpty()) {
                         NoteGif(96.dp, Modifier.padding(vertical = 4.dp))
                     } else {
+                        // цвет и размер строки меняются плавно
+                        val lineColor by animateColorAsState(if (on) c.accent else c.inactive, tween(400), label = "lyricColor")
+                        val lineScale by animateFloatAsState(if (on) 1f else 0.8f, tween(400), label = "lyricScale")
                         MText(
                             l.text.ifEmpty { "♪" }, 26,
                             Modifier
                                 .fillMaxWidth()
+                                .graphicsLayer {
+                                    scaleX = lineScale
+                                    scaleY = lineScale
+                                    transformOrigin = TransformOrigin(0f, 0.5f)
+                                }
                                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                                     app.player.seekTo(l.timeMs)
                                 },
-                            color = if (on) c.accent else c.inactive,
-                            weight = if (on) FontWeight.SemiBold else FontWeight.Light
+                            color = lineColor
                         )
                     }
                 }

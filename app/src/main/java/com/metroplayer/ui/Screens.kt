@@ -552,6 +552,32 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
             }
         }
 
+        MText("автоматика", 14, color = c.subtle)
+        Column(Modifier.padding(top = 6.dp, bottom = 24.dp)) {
+            MText(
+                (if (store.autoLyrics) "вкл" else "выкл") + " · искать тексты автоматически", 22,
+                Modifier
+                    .padding(vertical = 3.dp)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                        store.chooseAutoLyrics(!store.autoLyrics)
+                    },
+                color = if (store.autoLyrics) c.accent else c.inactive
+            )
+            MText(
+                (if (store.lyricsInNotif) "вкл" else "выкл") + " · строка песни в мини-плеере", 22,
+                Modifier
+                    .padding(vertical = 3.dp)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                        store.chooseLyricsInNotif(!store.lyricsInNotif)
+                    },
+                color = if (store.lyricsInNotif) c.accent else c.inactive
+            )
+            MText(
+                "Строка песни заменяет исполнителя в уведомлении и на экране блокировки. Применится со следующей очереди.",
+                13, Modifier.padding(top = 4.dp), color = c.subtle
+            )
+        }
+
         MText("экран «сейчас играет»", 14, color = c.subtle)
         Row(Modifier.padding(top = 6.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             listOf("обложка" to 0, "текст" to 1).forEach { (label, mode) ->

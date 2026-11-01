@@ -1,6 +1,14 @@
 package com.metroplayer.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -83,9 +91,23 @@ fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit) {
                 val i = activeIndex(lyrics, pos)
                 val cur = lyrics.lines.getOrNull(i)?.text.orEmpty()
                 val next = lyrics.lines.getOrNull(i + 1)?.text.orEmpty()
-                if (cur.isEmpty()) NoteGif(48.dp)
-                else MText(cur, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
-                MText(next, 16, Modifier.fillMaxWidth().padding(top = 4.dp), color = c.subtle, maxLines = 1, align = TextAlign.Center)
+                // при смене строки новая плавно выезжает снизу, старая уходит вверх
+                AnimatedContent(
+                    targetState = cur to next,
+                    modifier = Modifier.fillMaxWidth().height(88.dp),
+                    contentAlignment = Alignment.Center,
+                    transitionSpec = {
+                        (slideInVertically(tween(380)) { it / 2 } + fadeIn(tween(380))) togetherWith
+                            (slideOutVertically(tween(380)) { -it / 2 } + fadeOut(tween(220)))
+                    },
+                    label = "lyricStrip"
+                ) { (curText, nextText) ->
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        if (curText.isEmpty()) NoteGif(48.dp)
+                        else MText(curText, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
+                        MText(nextText, 16, Modifier.fillMaxWidth().padding(top = 4.dp), color = c.subtle, maxLines = 1, align = TextAlign.Center)
+                    }
+                }
             }
         }
     }
@@ -120,23 +142,35 @@ fun LyricsCoverPanel(lyrics: Lyrics?, pos: Long, onToggle: () -> Unit, onOpen: (
                 lyrics.lines.forEach { MText(it.text.ifEmpty { " " }, 18, Modifier.fillMaxWidth(), color = c.fg) }
             }
             else -> {
-                val i = activeIndex(lyrics, pos)
-                val from = (i - 2).coerceAtLeast(0)
-                val to = (from + 5).coerceAtMost(lyrics.lines.size)
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                    for (k in from until to) {
-                        val on = k == i
-                        if (on && lyrics.lines[k].text.isEmpty()) {
-                            NoteGif(72.dp, Modifier.padding(vertical = 5.dp))
-                            continue
+                val iNow = activeIndex(lyrics, pos)
+                // окно из пяти строк плавно «едет» вверх при смене строки
+                AnimatedContent(
+                    targetState = iNow,
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                    transitionSpec = {
+                        (slideInVertically(tween(420)) { it / 5 } + fadeIn(tween(420))) togetherWith
+                            (slideOutVertically(tween(420)) { -it / 5 } + fadeOut(tween(260)))
+                    },
+                    label = "lyricCover"
+                ) { i ->
+                    val from = (i - 2).coerceAtLeast(0)
+                    val to = (from + 5).coerceAtMost(lyrics.lines.size)
+                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                        for (k in from until to) {
+                            val on = k == i
+                            if (on && lyrics.lines[k].text.isEmpty()) {
+                                NoteGif(72.dp, Modifier.padding(vertical = 5.dp))
+                                continue
+                            }
+                            MText(
+                                lyrics.lines[k].text.ifEmpty { "♪" }, if (on) 24 else 18,
+                                Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                                weight = if (on) FontWeight.SemiBold else FontWeight.Light,
+                                color = if (on) c.accent else c.inactive,
+                                align = TextAlign.Center, maxLines = 3
+                            )
                         }
-                        MText(
-                            lyrics.lines[k].text.ifEmpty { "♪" }, if (on) 24 else 18,
-                            Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                            weight = if (on) FontWeight.SemiBold else FontWeight.Light,
-                            color = if (on) c.accent else c.inactive,
-                            align = TextAlign.Center, maxLines = 3
-                        )
                     }
                 }
             }

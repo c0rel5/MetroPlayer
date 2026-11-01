@@ -34,14 +34,18 @@ data class PlayerState(
     val speed: Float = 1f
 )
 
-fun Track.toMediaItem(): MediaItem =
+/**
+ * [hideArtist] — исполнителя в MediaItem не кладём: его (или текущую строку текста) подставляет
+ * PlaybackService через playlistMetadata, и мини-плеер показывает строку песни вместо исполнителя.
+ */
+fun Track.toMediaItem(hideArtist: Boolean = false): MediaItem =
     MediaItem.Builder()
         .setMediaId(id.toString())
         .setUri(uri)
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(title)
-                .setArtist(artist)
+                .setArtist(if (hideArtist) null else artist)
                 .setAlbumTitle(album)
                 .setArtworkUri(artUri)
                 .build()
@@ -155,7 +159,7 @@ class PlayerController(
     fun playTracks(tracks: List<Track>, startIndex: Int) {
         if (tracks.isEmpty()) return
         withController { c ->
-            c.setMediaItems(tracks.map { it.toMediaItem() }, startIndex.coerceIn(0, tracks.size - 1), 0L)
+            c.setMediaItems(tracks.map { it.toMediaItem(store.lyricsInNotif) }, startIndex.coerceIn(0, tracks.size - 1), 0L)
             c.prepare()
             c.play()
         }
@@ -185,7 +189,7 @@ class PlayerController(
 
     fun playNext(track: Track) = withController { c ->
         val at = if (c.mediaItemCount == 0) 0 else c.currentMediaItemIndex + 1
-        c.addMediaItem(at, track.toMediaItem())
+        c.addMediaItem(at, track.toMediaItem(store.lyricsInNotif))
         if (c.mediaItemCount == 1) {
             c.prepare()
             c.play()
