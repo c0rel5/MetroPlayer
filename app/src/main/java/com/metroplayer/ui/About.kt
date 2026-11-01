@@ -235,7 +235,10 @@ fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
         MText("КРЕДИТЫ", 12, Modifier.padding(top = 28.dp), FontWeight.SemiBold, c.subtle, spacing = 2f)
 
         MText("разработчики", 34, Modifier.padding(top = 4.dp), color = c.accent)
-        CreditPerson("corei5", "идея, дизайн, половина кода и исправление ошибок")
+        CreditPerson("corei5", "идея, дизайн и разработка")
+
+        MText("тестер", 34, Modifier.padding(top = 28.dp), color = c.accent)
+        CreditPerson("meoww", "тестирование · aka vanilla")
 
         MText("разработка", 34, Modifier.padding(top = 28.dp), color = c.accent)
         CreditRow("язык", "Kotlin 2.0")
