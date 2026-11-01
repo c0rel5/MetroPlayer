@@ -2,21 +2,6 @@ package com.metroplayer.ui
 
 import android.os.Build
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.res.painterResource
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -37,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -53,10 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.ImageLoader
@@ -118,52 +99,21 @@ private fun BoxScope.Big(text: String) =
 private fun BoxScope.Label(text: String) =
     MText(text, 16, Modifier.align(Alignment.BottomStart), FontWeight.SemiBold, Color.White, maxLines = 2)
 
-/** Слои иконки приложения для каждого стиля: (фон — null, если однотонный; передний план). */
-private fun iconLayers(skin: Int): Pair<Int?, Int> = when (skin) {
-    1 -> R.drawable.ic_launcher_background_aero to R.drawable.ic_launcher_foreground
-    2 -> R.drawable.ic_launcher_background_glass to R.drawable.ic_launcher_fg_glass
-    3 -> null to R.drawable.ic_launcher_fg_material
-    else -> null to R.drawable.ic_launcher_fg_metro
+@Composable
+private fun CreditPerson(name: String, role: String) {
+    val c = Metro.colors
+    MText(name, 24, Modifier.padding(top = 14.dp), color = c.fg, maxLines = 1)
+    MText(role, 14, Modifier.padding(top = 2.dp), color = c.subtle)
 }
 
-/** Иконка приложения выбранного стиля: Metro — плоский квадрат, Win7 — глянец, Aero — стекло, Material — «сквиркл». */
 @Composable
-private fun AppIconArt(skin: Int, size: Dp, accent: Color, modifier: Modifier = Modifier) {
-    val (bgRes, fgRes) = iconLayers(skin)
-    val shape = RoundedCornerShape(size * (if (skin == 0) 0f else if (skin == 1) 0.22f else if (skin == 2) 0.28f else 0.36f))
-    val flat = if (skin == 3) lerp(accent, Color.Black, 0.25f) else accent
-    val glossy = skin == 1 || skin == 2
-    Box(
-        modifier
-            .size(size)
-            .shadow(if (skin == 0) 0.dp else size / 10, shape, clip = false, spotColor = flat)
-            .clip(shape)
-            .then(if (glossy) Modifier.border(1.5.dp, Color.White.copy(alpha = if (skin == 2) 0.65f else 0.45f), shape) else Modifier)
-    ) {
-        // слои рисуем крупнее на 1.5×: так же, как лаунчер показывает центральную часть адаптивной иконки
-        if (bgRes != null) {
-            Image(painterResource(bgRes), null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.5f; scaleY = 1.5f })
-        } else {
-            Box(Modifier.fillMaxSize().background(flat))
-        }
-        Image(painterResource(fgRes), null, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.5f; scaleY = 1.5f })
-        if (glossy) {
-            // стеклянный отблеск по диагонали
-            Box(
-                Modifier.fillMaxSize().background(
-                    Brush.linearGradient(
-                        0f to Color.White.copy(alpha = 0.32f),
-                        0.45f to Color.White.copy(alpha = 0.05f),
-                        0.46f to Color.Transparent,
-                        1f to Color.Transparent
-                    )
-                )
-            )
-        }
+private fun CreditRow(label: String, value: String) {
+    val c = Metro.colors
+    Column(Modifier.padding(top = 12.dp)) {
+        MText(label, 14, color = c.subtle)
+        MText(value, 20, Modifier.padding(top = 1.dp), color = c.fg)
     }
 }
-
-private val SkinNames = listOf("Metro", "Windows 7", "Aero", "Material You")
 
 @Composable
 fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
@@ -243,38 +193,6 @@ fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
             }
         }
 
-        // ── арт: иконка приложения выбранного стиля ──
-        val float = rememberInfiniteTransition(label = "iconFloat")
-        val dy by float.animateFloat(
-            initialValue = 0f,
-            targetValue = -8f,
-            animationSpec = infiniteRepeatable(tween(2400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-            label = "iconDy"
-        )
-        Column(
-            Modifier.fillMaxWidth().padding(top = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Crossfade(targetState = c.skin, label = "iconArt") { sk ->
-                AppIconArt(sk, 148.dp, accent, Modifier.graphicsLayer { translationY = dy.dp.toPx() })
-            }
-            MText(SkinNames.getOrElse(c.skin) { "Metro" }, 30, Modifier.padding(top = 22.dp), color = c.accent)
-            MText("значок приложения меняется вместе со стилем", 13, Modifier.padding(top = 2.dp), color = c.subtle)
-            Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                for (sk in 0..3) {
-                    AppIconArt(
-                        sk, 52.dp, accent,
-                        Modifier
-                            .alpha(if (sk == c.skin) 1f else 0.45f)
-                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                store.chooseSkin(sk)
-                                com.metroplayer.SkinIcons.apply(app, sk)
-                            }
-                    )
-                }
-            }
-        }
-
         // ── акцент ──
         MText("цвет акцента", 14, Modifier.padding(top = 28.dp), color = c.subtle)
         Column(Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -313,9 +231,25 @@ fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
             modifier = Modifier.fillMaxWidth(0.7f).align(Alignment.CenterHorizontally)
         )
 
-        // ── автор ──
-        MText("автор", 14, Modifier.padding(top = 20.dp), color = c.subtle)
-        MText("corei5", 34, Modifier.padding(top = 2.dp), color = c.accent)
+        // ── кредиты ──
+        MText("КРЕДИТЫ", 12, Modifier.padding(top = 28.dp), FontWeight.SemiBold, c.subtle, spacing = 2f)
+
+        MText("разработчики", 34, Modifier.padding(top = 4.dp), color = c.accent)
+        CreditPerson("corei5", "идея, дизайн, половина кода и исправление ошибок")
+
+        MText("разработка", 34, Modifier.padding(top = 28.dp), color = c.accent)
+        CreditRow("язык", "Kotlin 2.0")
+        CreditRow("интерфейс", "Jetpack Compose")
+        CreditRow("стиль", "Metro / Windows Phone")
+        CreditRow("плеер", "AndroidX Media3 (ExoPlayer)")
+        CreditRow("картинки и gif", "Coil")
+        CreditRow("тексты песен", "lrclib.net")
+        CreditRow("шрифт", "Segoe UI")
+        CreditRow("платформа", "Android 8.0+ (API 26)")
+        CreditRow("сборка", "Gradle · GitHub Actions")
+
+        MText("Metro Player v$version", 14, Modifier.padding(top = 28.dp), color = c.subtle)
+        MText("сделано с любовью к музыке", 14, Modifier.padding(top = 2.dp), color = c.inactive)
 
         Spacer(Modifier.height(32.dp))
     }
