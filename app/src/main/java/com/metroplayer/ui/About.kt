@@ -231,6 +231,9 @@ fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
             modifier = Modifier.fillMaxWidth(0.7f).align(Alignment.CenterHorizontally)
         )
 
+        // ── аски-арты (тап по арту 2 много раз — пасхалка) ──
+        AboutAsciiArt()
+
         // ── кредиты ──
         MText("КРЕДИТЫ", 12, Modifier.padding(top = 28.dp), FontWeight.SemiBold, c.subtle, spacing = 2f)
 
