@@ -116,13 +116,14 @@ fun <T> JumpLazyList(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 MText("перейти к", 14, Modifier.padding(bottom = 6.dp), color = c.subtle)
-                firstPos.entries.toList().chunked(4).forEach { chunk ->
+                firstPos.entries.toList().chunked(4).forEachIndexed { rowNo, chunk ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        chunk.forEach { (key, pos) ->
+                        chunk.forEachIndexed { colNo, (key, pos) ->
                             Box(
                                 Modifier
                                     .weight(1f)
                                     .height(76.dp)
+                                    .metroEnter(rowNo * 4 + colNo, stepMs = 25, maxAnimated = 40, tiltDeg = 70f)
                                     .metroPress(pressScale = 0.92f) {
                                         open = false
                                         scope.launch { listState.scrollToItem(pos) }

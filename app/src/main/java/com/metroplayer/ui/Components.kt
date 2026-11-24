@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
@@ -65,6 +67,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -188,6 +191,31 @@ fun Modifier.metroPress(
                 onTap = { click() }
             )
         }
+}
+
+/**
+ * Вход элемента как в Windows Phone: плитка/строка «влетает» справа, поворачиваясь вокруг левого края,
+ * с задержкой по номеру ([index]) — получается каскад. Элементы дальше [maxAnimated] не анимируются,
+ * чтобы длинный список не «дёргался» при прокрутке.
+ */
+@Composable
+fun Modifier.metroEnter(index: Int, stepMs: Int = 45, maxAnimated: Int = 14, tiltDeg: Float = 55f): Modifier {
+    val enabled = index in 0 until maxAnimated
+    val p = remember { Animatable(if (enabled) 0f else 1f) }
+    LaunchedEffect(Unit) {
+        if (enabled) {
+            delay(index * stepMs.toLong())
+            p.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
+        }
+    }
+    return this.graphicsLayer {
+        val v = p.value
+        alpha = (v * 1.6f).coerceAtMost(1f)
+        rotationY = (1f - v) * -tiltDeg
+        translationX = (1f - v) * 48.dp.toPx()
+        transformOrigin = TransformOrigin(0f, 0.5f)
+        cameraDistance = 14f * density
+    }
 }
 
 @Composable
@@ -420,13 +448,15 @@ fun TrackRow(
     highlighted: Boolean,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
-    onMore: (() -> Unit)? = null
+    onMore: (() -> Unit)? = null,
+    enterIndex: Int = -1
 ) {
     val c = Metro.colors
     Box(
         Modifier
             .fillMaxWidth()
             .height(68.dp)
+            .metroEnter(enterIndex, stepMs = 30, tiltDeg = 35f)
             .metroPress(pressScale = 0.98f, onLongClick = onLongClick, onClick = onClick)
     ) {
         // акцентный маркер у левого края — «сейчас играет»
@@ -639,25 +669,6 @@ fun MetroBottomBar(
     }
 }
 
-/** Тонкая полоска прогресса над нижней панелью. Своё состояние — перерисовывается только она. */
-@Composable
-private fun MiniProgress(app: MetroApp) {
-    val c = Metro.colors
-    val st = app.player.state
-    var pos by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(st.isPlaying, st.current?.id) {
-        pos = app.player.positionMs()
-        while (st.isPlaying) {
-            delay(500)
-            pos = app.player.positionMs()
-        }
-    }
-    val frac = if (st.durationMs > 0) (pos.toFloat() / st.durationMs).coerceIn(0f, 1f) else 0f
-    Box(Modifier.fillMaxWidth().height(3.dp).background(Color(0xFF3A3A3A))) {
-        Box(Modifier.fillMaxWidth(frac).fillMaxHeight().background(c.accent))
-    }
-}
-
 /**
  * Мини-плеер в нижней панели: обложка, название, исполнитель, пауза/далее и «···».
  * Нажатие на название открывает «сейчас играет». [leftExtra] — дополнительные кнопки слева (поиск, «+»).
@@ -672,7 +683,6 @@ fun MiniPlayerBar(
     val st = app.player.state
     val cur = st.current
     Column(Modifier.fillMaxWidth().skinBar().navigationBarsPadding()) {
-        if (cur != null) MiniProgress(app)
         Row(
             Modifier
                 .fillMaxWidth()

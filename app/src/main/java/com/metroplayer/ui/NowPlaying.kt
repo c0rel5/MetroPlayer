@@ -1,6 +1,13 @@
 package com.metroplayer.ui
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
@@ -204,11 +211,23 @@ private fun NowPage(
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { toggleView() }
                 )
             }
-            MText(t?.title ?: "ничего не играет", 30, Modifier.padding(top = 16.dp), maxLines = 1)
-            MText(
-                if (t != null) "${t.artist} · ${t.album}" else "выберите музыку в коллекции",
-                16, Modifier.padding(top = 2.dp), color = c.accent, maxLines = 1
-            )
+            // при смене трека название и исполнитель «уезжают» влево, новые приезжают справа
+            AnimatedContent(
+                targetState = Pair(
+                    t?.title ?: "ничего не играет",
+                    if (t != null) "${t.artist} · ${t.album}" else "выберите музыку в коллекции"
+                ),
+                transitionSpec = {
+                    (slideInHorizontally(tween(320)) { it / 4 } + fadeIn(tween(320))) togetherWith
+                        (slideOutHorizontally(tween(200)) { -it / 4 } + fadeOut(tween(200)))
+                },
+                label = "nowTitle"
+            ) { (title, sub) ->
+                Column(Modifier.padding(top = 16.dp)) {
+                    MText(title, 30, maxLines = 1)
+                    MText(sub, 16, Modifier.padding(top = 2.dp), color = c.accent, maxLines = 1)
+                }
+            }
             SeekBar(pos, st.durationMs, onSeek, Modifier.padding(top = 8.dp), onScrub = { scrub = it })
             Row(Modifier.fillMaxWidth().offset(y = (-8).dp), horizontalArrangement = Arrangement.SpaceBetween) {
                 val shown = scrub ?: pos
@@ -273,7 +292,8 @@ private fun QueuePage(app: MetroApp, st: PlayerState, onMore: (Int) -> Unit) {
                 highlighted = i == 0 && st.currentIndex >= 0,
                 onClick = { app.player.seekToIndex(offset + i) },
                 onLongClick = { onMore(offset + i) },
-                onMore = { onMore(offset + i) }
+                onMore = { onMore(offset + i) },
+                enterIndex = i
             )
         }
     }
@@ -292,7 +312,8 @@ private fun HistoryPage(app: MetroApp) {
                 title = t.title,
                 subtitle = "${t.artist} · ${fmt(t.durationMs)}",
                 highlighted = false,
-                onClick = { app.player.playTracks(tracks, i) }
+                onClick = { app.player.playTracks(tracks, i) },
+                enterIndex = i
             )
         }
     }

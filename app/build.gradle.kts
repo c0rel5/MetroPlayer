@@ -12,13 +12,29 @@ android {
         applicationId = "com.metroplayer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.0"
+        // versionCode растёт с каждой сборкой в GitHub Actions — новая версия ставится поверх старой
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 0) + 100
+        versionName = "2.1"
+    }
+
+    // Один и тот же ключ для всех сборок: без него каждая сборка в CI подписывается новым случайным
+    // debug-ключом, и Android не даёт обновить приложение, не удалив прежнее.
+    signingConfigs {
+        create("metro") {
+            storeFile = file("metroplayer.keystore")
+            storePassword = "metroplayer"
+            keyAlias = "metroplayer"
+            keyPassword = "metroplayer"
+        }
     }
 
     buildTypes {
-        release {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("metro")
+        }
+        getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("metro")
         }
     }
     compileOptions {

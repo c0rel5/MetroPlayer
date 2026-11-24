@@ -2,6 +2,8 @@ name: Build APK
 on:
   push:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,3 +23,12 @@ jobs:
           name: MetroPlayer-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Publish release with APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk MetroPlayer.apk
+          gh release create "build-${{ github.run_number }}" MetroPlayer.apk \
+            --title "Metro Player — сборка ${{ github.run_number }}" \
+            --notes "Установите поверх прежней версии — удалять приложение не нужно." \
+            --latest

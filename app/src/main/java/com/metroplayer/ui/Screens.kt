@@ -89,11 +89,13 @@ private fun Tile(
     h: Dp,
     label: String,
     onClick: () -> Unit,
+    enter: Int = -1,
     top: @Composable () -> Unit
 ) {
     Box(
         Modifier
             .size(w, h)
+            .metroEnter(enter, stepMs = 60)
             .metroPress(tilt = true, onClick = onClick)
             .skinBg(color)
             .padding(12.dp)
@@ -104,15 +106,15 @@ private fun Tile(
 }
 
 @Composable
-private fun CountTile(count: Int, label: String, color: Color, size: Dp, onClick: () -> Unit) {
-    Tile(color, size, size, label, onClick) {
+private fun CountTile(count: Int, label: String, color: Color, size: Dp, enter: Int, onClick: () -> Unit) {
+    Tile(color, size, size, label, onClick, enter) {
         MText("$count", 44, color = Color.White, lh = 1f)
     }
 }
 
 /** «Живая» плитка: каждые 5 секунд переворачивается между названием и обложкой. */
 @Composable
-private fun LiveTile(app: MetroApp, w: Dp, h: Dp, onClick: () -> Unit) {
+private fun LiveTile(app: MetroApp, w: Dp, h: Dp, enter: Int, onClick: () -> Unit) {
     val st = app.player.state
     val cur = st.current
     val tileColor = Metro.colors.accent
@@ -130,6 +132,7 @@ private fun LiveTile(app: MetroApp, w: Dp, h: Dp, onClick: () -> Unit) {
     Box(
         Modifier
             .size(w, h)
+            .metroEnter(enter, stepMs = 60)
             .metroPress(tilt = true, onClick = onClick)
             .skinBg(tileColor)
             .clipToBounds()
@@ -198,58 +201,52 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
     )
 
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                val tile = (maxWidth - 48.dp - 6.dp) / 2
-                val wide = tile * 2 + 6.dp
-                Column(
-                    Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp)
-                ) {
-                    MText("МОЯ КОЛЛЕКЦИЯ", 12, Modifier.padding(top = 24.dp), FontWeight.SemiBold, c.subtle, spacing = 2f)
-                    MText("музыка", 54, Modifier.padding(top = 4.dp, bottom = 12.dp), lh = 1.1f)
-                    if (!repo.loaded) {
-                        MetroProgressDots(Modifier.padding(bottom = 12.dp))
-                    } else if (repo.tracks.isEmpty()) {
-                        MText(
-                            "На устройстве не найдено музыки. Добавьте файлы и выберите «обновить библиотеку» в меню «···».",
-                            16, Modifier.padding(bottom = 12.dp), color = c.subtle
-                        )
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        LiveTile(app, wide, tile) { push(Screen.NowPlaying) }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            CountTile(repo.artists.size, "исполнители", shade1, tile) { push(Screen.Artists) }
-                            CountTile(repo.albums.size, "альбомы", shade2, tile) { push(Screen.Albums) }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            CountTile(store.playlists.size, "плейлисты", shade2, tile) { push(Screen.Playlists) }
-                            CountTile(store.favorites.size, "избранное", shade1, tile) { push(Screen.Favorites) }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            CountTile(store.history.size, "недавние", shade1, tile) { push(Screen.Recent) }
-                            Tile(shade2, tile, tile, "радио", { radio() }) {
-                                MetroIcon(Ic.RADIO, 44.dp, Color.White)
-                            }
-                        }
-                        Tile(shade1, wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }) {
-                            MetroIcon(Ic.NOTE, 44.dp, Color.White)
-                        }
-                    }
-                    Spacer(Modifier.height(24.dp))
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val tile = (maxWidth - 48.dp - 6.dp) / 2
+            val wide = tile * 2 + 6.dp
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
+            ) {
+                MText("МОЯ КОЛЛЕКЦИЯ", 12, Modifier.padding(top = 24.dp), FontWeight.SemiBold, c.subtle, spacing = 2f)
+                MText("музыка", 54, Modifier.padding(top = 4.dp, bottom = 12.dp), lh = 1.1f)
+                if (!repo.loaded) {
+                    MetroProgressDots(Modifier.padding(bottom = 12.dp))
+                } else if (repo.tracks.isEmpty()) {
+                    MText(
+                        "На устройстве не найдено музыки. Добавьте файлы и выберите «обновить библиотеку» в меню «···».",
+                        16, Modifier.padding(bottom = 12.dp), color = c.subtle
+                    )
                 }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LiveTile(app, wide, tile, 0) { push(Screen.NowPlaying) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        CountTile(repo.artists.size, "исполнители", shade1, tile, 1) { push(Screen.Artists) }
+                        CountTile(repo.albums.size, "альбомы", shade2, tile, 2) { push(Screen.Albums) }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        CountTile(store.playlists.size, "плейлисты", shade2, tile, 3) { push(Screen.Playlists) }
+                        CountTile(store.favorites.size, "избранное", shade1, tile, 4) { push(Screen.Favorites) }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        CountTile(store.history.size, "недавние", shade1, tile, 5) { push(Screen.Recent) }
+                        Tile(shade2, tile, tile, "радио", { radio() }, 6) {
+                            MetroIcon(Ic.RADIO, 44.dp, Color.White)
+                        }
+                    }
+                    Tile(shade1, wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }, 7) {
+                        MetroIcon(Ic.NOTE, 44.dp, Color.White)
+                    }
+                }
+                Spacer(Modifier.height(96.dp))
             }
-            MiniPlayerBar(
-                app,
-                onOpen = { push(Screen.NowPlaying) },
-                onMore = { menu = true },
-                leftExtra = {
-                    MetroCircleButton(42.dp, Ic.SEARCH, 22.dp, Color.White, "поиск") { push(Screen.Search) }
-                }
-            )
         }
+        Ellipsis(
+            c.subtle, { menu = true },
+            Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 16.dp, bottom = 8.dp)
+        )
         MetroMenu(menu, items) { menu = false }
     }
 }
@@ -295,8 +292,8 @@ fun ArtistsScreen(app: MetroApp, push: (Screen) -> Unit) {
         if (artists.isEmpty()) {
             EmptyHint("музыка не найдена")
         } else {
-            JumpLazyList(artists, { it.name }) { _, a ->
-                TrackRow(a.name, plural(a.count, "трек", "трека", "треков"), false, { push(Screen.ArtistTracks(a.name)) })
+            JumpLazyList(artists, { it.name }) { i, a ->
+                TrackRow(a.name, plural(a.count, "трек", "трека", "треков"), false, { push(Screen.ArtistTracks(a.name)) }, enterIndex = i)
             }
         }
     }
@@ -309,12 +306,13 @@ fun AlbumsScreen(app: MetroApp, push: (Screen) -> Unit) {
         if (albums.isEmpty()) {
             EmptyHint("музыка не найдена")
         } else {
-            JumpLazyList(albums, { it.name }) { _, a ->
+            JumpLazyList(albums, { it.name }) { i, a ->
                 TrackRow(
                     a.name,
                     "${a.artist} · ${plural(a.count, "трек", "трека", "треков")}",
                     false,
-                    { push(Screen.AlbumTracks(a.id)) }
+                    { push(Screen.AlbumTracks(a.id)) },
+                    enterIndex = i
                 )
             }
         }
@@ -333,8 +331,8 @@ fun PlaylistsScreen(app: MetroApp, push: (Screen) -> Unit, onNewPlaylist: () -> 
             EmptyHint("нажмите «+», чтобы создать плейлист")
         } else {
             LazyColumn(Modifier.fillMaxSize()) {
-                itemsIndexed(playlists) { _, p ->
-                    TrackRow(p.name, plural(p.trackIds.size, "трек", "трека", "треков"), false, { push(Screen.PlaylistTracks(p.id)) })
+                itemsIndexed(playlists) { i, p ->
+                    TrackRow(p.name, plural(p.trackIds.size, "трек", "трека", "треков"), false, { push(Screen.PlaylistTracks(p.id)) }, enterIndex = i)
                 }
             }
         }
@@ -504,7 +502,8 @@ fun TrackListScreen(
             onMore = {
                 selected = t
                 trackMenu = true
-            }
+            },
+            enterIndex = i
         )
     }
 
