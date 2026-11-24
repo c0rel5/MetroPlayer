@@ -1,67 +1,91 @@
 # Metro Player
 
-Android-плеер в стиле Microsoft Metro (Windows Phone) по концепту «Metro Player — концепты».
-Kotlin + Jetpack Compose + Media3 (фоновое воспроизведение, уведомление, управление с экрана блокировки).
+A music player for Android inspired by Windows Phone's Metro design.
 
-## Версия 2.4
-- **Две анимации текста на выбор:** настройки → «анимация текста» — новая (строки плывут, слова загораются) или старая (слайд окна строк).
-- Исходный код MetroPlayer полностью открыт.
+[**Download the latest APK**](https://github.com/c0rel5/MetroPlayer/releases/latest)
 
-## Версия 2.3
-- **Своя гифка вместо ноты:** настройки → «гифка вместо ноты» → выбрать файл. Показывается в тексте песни на проигрышах; кнопка «стандартная» возвращает исходную.
-- **Новая анимация при тапе по обложке:** карточка переворачивается, а текст «плывёт» — активная строка уезжает в центр, соседние уменьшаются и бледнеют.
-- **Баги:** тап по строке текста учитывает сдвиг синхронизации; очередь показывает реальный порядок при shuffle; одна общая загрузка гифок (меньше памяти); дубль поиска текста; новая музыка подхватывается без перезапуска.
-- **Релизы на GitHub** теперь на английском (заметки берутся из `RELEASE_NOTES.md`).
+## Features
 
-## Версия 2.1
-- **Обновление поверх старой версии:** сборки подписываются одним постоянным ключом (`app/metroplayer.keystore`), `versionCode` растёт с каждым запуском Actions. После каждой сборки APK публикуется в **Releases** — скачайте и установите поверх, удалять приложение не нужно. *Один раз* придётся удалить сборку, подписанную старым случайным ключом.
-- Убраны ASCII-арты из «О приложении», нижняя панель и кнопка поиска на главном экране, полоска прогресса.
-- Анимации Metro: плитки и строки списков «влетают» каскадом с поворотом вокруг левого края, смена названия трека — слайд, буквы быстрого перехода «выкатываются» плитками.
+**Playback**
+- Background playback, notification and lock screen controls (Media3)
+- Shuffle, repeat (all / one), favorites
+- Playback speed 0.75–2×, sleep timer
+- Queue that shows the real play order when shuffle is on
+- Mini player on every screen
 
-## Версия 2.0 — упор на удобство и дизайн Metro
+**Library**
+- Live tiles on the home screen: artists, albums, playlists, favorites, recent
+- Jump list: tap a letter header to open a letter grid, as on Windows Phone
+- Global search across artists, albums and tracks
+- Format filter (`.flac`, `.mp3`, …) in any track list, with a configurable default
+- Track menu: play next, add to queue, favorite, add to playlist, go to artist, go to album
 
-**Удобство**
-- **Мини-плеер на всех экранах** — внизу обложка, название, исполнитель, пауза и «далее», сверху тонкая полоса прогресса. Тап открывает «сейчас играет».
-- **«Сейчас играет»**: кнопки перемешивания, повтора (все / один) и избранного прямо под управлением; перемотка с крупным бегунком, при перетаскивании время обновляется, справа — сколько осталось.
-- **Списки**: вверху «играть» и «перемешать», число треков и общая длительность; у каждого трека кнопка «···» (раньше — только долгое нажатие, с вибро-откликом).
-- **Меню трека**: играть следующим, **в конец очереди**, в избранное, в плейлист, **к исполнителю**, **к альбому**.
-- **Быстрый переход по буквам** (как в Windows Phone): тап по букве-заголовку открывает сетку букв — исполнители, альбомы, все треки, избранное.
-- **Глобальный поиск** (кнопка на главном экране и пункт меню): исполнители, альбомы и треки в одном месте.
-- **Очередь**: долгое нажатие / «···» — играть, убрать из очереди, в избранное, в плейлист.
-- **Новая плитка «недавние»** на главном экране; индикатор загрузки библиотеки; подсказка, если музыки нет.
-- Кнопка «назад» сначала закрывает открытое меню; у кнопок плеера добавлены подписи для TalkBack.
+**Lyrics**
+- Synced LRC lyrics with line highlighting; tap a line to seek
+- Fetched from [lrclib.net](https://lrclib.net) or loaded from a `.lrc` / `.txt` file
+- Per-track sync offset (±0.5 s)
+- Two display modes: synced (auto-scroll) and selectable (static, copyable text)
+- Two animations to choose from: lines glide to the center with words lighting up one by one, or the classic sliding window
+- Tap the cover to flip the card and show lyrics on the back
+- Custom GIF in place of the note during instrumental breaks
 
-**Дизайн**
-- Переключатели Windows Phone (контур + заливка акцентом + вертикальный бегунок), выбор варианта с квадратным маркером.
-- Экран настроек разбит на разделы, палитра акцента — прямо в настройках.
-- Акцентный маркер у левого края играющего трека, прямоугольный бегунок, бегущие точки вместо спиннера.
+**Appearance**
+- Four skins, each with its own app and notification icon: Metro, Windows 7, Aero, Material You
+- Dark and light themes, selectable accent color
+- Windows Phone style toggles and sliders, cascading tile and list animations
 
-## Экраны (как в концепте)
-1. **Сейчас играет** — чёрный фон, pivot «сейчас играет · очередь · история», квадратная обложка, круглые кнопки.
-2. **Живые плитки** — стартовый экран «музыка»: исполнители, альбомы, плейлисты, избранное, радио (+ «все треки»).
-3. **Очередь** — светлая тема (включается в «настройки»), нижняя панель #1F1F1F.
+## Installation
 
-## Новое
-- **Фильтр по формату** — в любом списке треков (все треки, альбом, исполнитель…) сверху лента `все · .flac · .mp3 …`; тап по формату оставляет только его (и «играть всё» играет только выбранный формат).
-- **О приложении** (меню «···» на главном экране): живые плитки, автор corei5, выбор цвета акцента, гифка внизу.
+1. Download the latest `MetroPlayer-*.apk` from [Releases](https://github.com/c0rel5/MetroPlayer/releases/latest).
+2. Allow installation from unknown sources and install the file.
+3. Grant access to audio and notifications on first launch.
 
-- **Тексты песен** — вкладка «текст» на экране «сейчас играет». Синхронные (LRC) подсвечиваются по ходу песни, тап по строке перематывает. Текст ищется на lrclib.net или загружается из файла .lrc / .txt.
-  Режимы (переключатель на вкладке и в настройках): «синхронно» — автопрокрутка; «выделение» — статичный текст, который можно выделять и копировать.
-- **Уведомление** — своя иконка ноты в статус-баре и цвет акцента.
-- **Плитки на главном экране** — цвета акцента (оттенки слегка различаются), меняются вместе с выбором цвета в «О приложении».
-- **Иконка** — минималистичная в стиле Metro: белая нота в круге на синем фоне.
+Every build is signed with the same key, so new versions install over old ones without uninstalling.
 
-- **Текст на экране «сейчас играет»** — два вида: обложка + две строки текста под кнопками, либо текст вместо обложки (тап по обложке/тексту переключает; настройка также в «настройках» и в меню «···»).
-- **Таймер сна**, **скорость** 0.75–2×, **поиск** по трекам (меню «···» в любом списке), **сдвиг синхронизации** текста ±0.5 с на каждый трек.
+Requires Android 8.0 (API 26) or newer.
 
-## Сборка
-**Android Studio:** File → Open → папка проекта → Run. (Нужен JDK 17; Gradle скачается сам по gradle-wrapper.properties.)
+## Building
 
-**Без Android Studio (GitHub Actions):** залейте проект в репозиторий — workflow `.github/workflows/build.yml`
-соберёт `app-debug.apk` (вкладка Actions → артефакт `MetroPlayer-debug-apk`).
+**Android Studio:** open the project folder and run. JDK 17 is required; Gradle is downloaded automatically.
 
-minSdk 26 · targetSdk 35 · пакет `com.metroplayer`
+**Command line:**
 
-## Шрифт
-В концепте Segoe UI / Open Sans. Сейчас используется системный Sans (Roboto Light). Чтобы поставить Open Sans,
-положите .ttf в `app/src/main/res/font/` и поменяйте одну строку `MetroFont` в `ui/MetroTheme.kt`.
+```bash
+gradle assembleDebug
+```
+
+The APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
+
+**GitHub Actions:** the [workflow](.github/workflows/build.yml) builds the APK on every push and publishes it to Releases, using [`RELEASE_NOTES.md`](RELEASE_NOTES.md) as the release body.
+
+## Tech stack
+
+- Kotlin, Jetpack Compose
+- AndroidX Media3 (ExoPlayer, MediaSession)
+- Coil (images and GIFs)
+- minSdk 26, targetSdk 35, package `com.metroplayer`
+
+## Project structure
+
+```
+app/src/main/java/com/metroplayer/
+├── MainActivity.kt
+├── PlaybackService.kt
+├── MetroNotification.kt
+├── SkinIcons.kt
+├── player/    playback controller
+├── data/      library, lyrics, settings
+└── ui/        screens, tiles, now playing, lyrics
+```
+
+## Custom font
+
+The original concept uses Segoe UI / Open Sans; the app currently uses the system sans-serif. To use your own, put the font file in `app/src/main/res/font/` and change the `MetroFont` line in `ui/MetroTheme.kt`.
+
+## Contributing
+
+Bug reports and pull requests are welcome. Open an [issue](https://github.com/c0rel5/MetroPlayer/issues) to start.
+
+## Disclaimer
+
+Metro Player is an independent fan project and is not affiliated with Microsoft.
