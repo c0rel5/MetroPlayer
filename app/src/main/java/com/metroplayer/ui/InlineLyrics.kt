@@ -1,44 +1,51 @@
 package com.metroplayer.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
-import android.os.Build
-import coil.ImageLoader
 import coil.compose.AsyncImage
-import coil.decode.GifDecoder
-import coil.decode.ImageDecoderDecoder
-import com.metroplayer.R
 import com.metroplayer.MetroApp
-import com.metroplayer.data.Lyrics
+import com.metroplayer.R
 import com.metroplayer.data.LrcParser
+import com.metroplayer.data.Lyrics
 
 /** Текст текущего трека (null — нет). Перечитывается при смене трека и при сохранении текста. */
 @Composable
@@ -50,21 +57,20 @@ fun rememberLyrics(app: MetroApp, trackId: Long?): Lyrics? {
     }.value
 }
 
-/** Гифка вместо «♪», когда в текущей строке нет слов (проигрыш/вступление). */
+/**
+ * Гифка вместо «♪», когда в текущей строке нет слов (проигрыш/вступление).
+ * Если пользователь выбрал свою гифку (настройки → «гифка вместо ноты»), показывается она.
+ */
 @Composable
 fun NoteGif(size: Dp, modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
-    val loader = remember {
-        ImageLoader.Builder(ctx)
-            .components {
-                if (Build.VERSION.SDK_INT >= 28) add(ImageDecoderDecoder.Factory()) else add(GifDecoder.Factory())
-            }
-            .build()
-    }
+    val store = (ctx.applicationContext as MetroApp).store
+    val custom = remember(store.noteGif) { store.noteGifFile() }
     AsyncImage(
-        model = R.raw.note_gif,
-        imageLoader = loader,
+        model = custom ?: R.raw.note_gif,
+        imageLoader = GifLoader.get(ctx),
         contentDescription = null,
+        contentScale = ContentScale.Fit,
         modifier = modifier.size(size)
     )
 }
@@ -143,34 +149,68 @@ fun LyricsCoverPanel(lyrics: Lyrics?, pos: Long, onToggle: () -> Unit, onOpen: (
             }
             else -> {
                 val iNow = activeIndex(lyrics, pos)
-                // окно из пяти строк плавно «едет» вверх при смене строки
-                AnimatedContent(
-                    targetState = iNow,
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                    transitionSpec = {
-                        (slideInVertically(tween(420)) { it / 5 } + fadeIn(tween(420))) togetherWith
-                            (slideOutVertically(tween(420)) { -it / 5 } + fadeOut(tween(260)))
-                    },
-                    label = "lyricCover"
-                ) { i ->
-                    val from = (i - 2).coerceAtLeast(0)
-                    val to = (from + 5).coerceAtMost(lyrics.lines.size)
-                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                        for (k in from until to) {
-                            val on = k == i
-                            if (on && lyrics.lines[k].text.isEmpty()) {
-                                NoteGif(72.dp, Modifier.padding(vertical = 5.dp))
-                                continue
+                val listState = rememberLazyListState()
+                // Строки не «прыгают» окном, а плавно плывут: активная строка мягко уезжает в центр панели,
+                // соседние уменьшаются и бледнеют по мере удаления от неё.
+                LaunchedEffect(iNow, lyrics) {
+                    if (iNow < 0) {
+                        listState.scrollToItem(0)
+                        return@LaunchedEffect
+                    }
+                    val li = iNow + 1   // нулевой элемент списка — отступ сверху
+                    if (listState.layoutInfo.visibleItemsInfo.none { it.index == li }) listState.scrollToItem(li)
+                    val info = listState.layoutInfo
+                    val item = info.visibleItemsInfo.firstOrNull { it.index == li } ?: return@LaunchedEffect
+                    val center = (info.viewportStartOffset + info.viewportEndOffset) / 2f
+                    listState.animateScrollBy(item.offset + item.size / 2f - center, tween(600, easing = FastOutSlowInEasing))
+                }
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val pad = maxHeight / 2
+                    LazyColumn(
+                        Modifier.fillMaxSize(),
+                        state = listState,
+                        userScrollEnabled = false,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        item { Spacer(Modifier.height(pad)) }
+                        itemsIndexed(lyrics.lines) { k, line ->
+                            val dist = if (iNow < 0) 3 else kotlin.math.abs(k - iNow)
+                            val on = dist == 0
+                            val targetScale = when (dist) {
+                                0 -> 1f
+                                1 -> 0.84f
+                                else -> 0.72f
                             }
-                            MText(
-                                lyrics.lines[k].text.ifEmpty { "♪" }, if (on) 24 else 18,
-                                Modifier.fillMaxWidth().padding(vertical = 5.dp),
-                                weight = if (on) FontWeight.SemiBold else FontWeight.Light,
-                                color = if (on) c.accent else c.inactive,
-                                align = TextAlign.Center, maxLines = 3
-                            )
+                            val targetAlpha = when (dist) {
+                                0 -> 1f
+                                1 -> 0.6f
+                                2 -> 0.4f
+                                else -> 0.25f
+                            }
+                            val lineScale by animateFloatAsState(targetScale, tween(500), label = "lineScale")
+                            val lineAlpha by animateFloatAsState(targetAlpha, tween(500), label = "lineAlpha")
+                            if (on && line.text.isEmpty()) {
+                                Box(Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                                    NoteGif(72.dp)
+                                }
+                            } else {
+                                MText(
+                                    line.text.ifEmpty { "♪" }, 22,
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp)
+                                        .graphicsLayer {
+                                            scaleX = lineScale
+                                            scaleY = lineScale
+                                            alpha = lineAlpha
+                                        },
+                                    weight = if (on) FontWeight.SemiBold else FontWeight.Light,
+                                    color = if (on) c.accent else c.fg,
+                                    align = TextAlign.Center, maxLines = 3
+                                )
+                            }
                         }
+                        item { Spacer(Modifier.height(pad)) }
                     }
                 }
             }

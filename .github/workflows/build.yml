@@ -23,12 +23,24 @@ jobs:
           name: MetroPlayer-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-      - name: Publish release with APK
+      - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk MetroPlayer.apk
-          gh release create "build-${{ github.run_number }}" MetroPlayer.apk \
-            --title "Metro Player — сборка ${{ github.run_number }}" \
-            --notes "Установите поверх прежней версии — удалять приложение не нужно." \
+          VERSION=$(grep -m1 'versionName' app/build.gradle.kts | sed -E 's/.*"([^"]+)".*/\1/')
+          TAG="build-${{ github.run_number }}"
+          APK="MetroPlayer-v${VERSION}-build${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
+          {
+            cat RELEASE_NOTES.md
+            echo
+            echo "---"
+            echo "Build ${{ github.run_number }} · commit ${GITHUB_SHA::7}"
+          } > release_body.md
+          # a re-run of the same workflow run reuses the tag, so remove an old release first
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" "$APK" \
+            --target "${{ github.sha }}" \
+            --title "Metro Player ${VERSION} (build ${{ github.run_number }})" \
+            --notes-file release_body.md \
             --latest

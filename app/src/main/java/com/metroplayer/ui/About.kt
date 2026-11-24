@@ -1,6 +1,5 @@
 package com.metroplayer.ui
 
-import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -40,10 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil.ImageLoader
 import coil.compose.AsyncImage
-import coil.decode.GifDecoder
-import coil.decode.ImageDecoderDecoder
 import com.metroplayer.MetroApp
 import com.metroplayer.R
 import kotlinx.coroutines.delay
@@ -129,13 +125,7 @@ fun AboutScreen(app: MetroApp, push: (Screen) -> Unit) {
             "1.0"
         }
     }
-    val loader = remember {
-        ImageLoader.Builder(ctx)
-            .components {
-                if (Build.VERSION.SDK_INT >= 28) add(ImageDecoderDecoder.Factory()) else add(GifDecoder.Factory())
-            }
-            .build()
-    }
+    val loader = remember { GifLoader.get(ctx) }
 
     val formats = remember(repo.tracks) {
         repo.tracks.filter { it.format.isNotEmpty() }

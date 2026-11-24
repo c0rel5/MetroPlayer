@@ -55,4 +55,10 @@ class MainActivity : ComponentActivity() {
             MetroRoot(app, granted, request)
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // скачали/удалили треки, пока приложение было свёрнуто — список обновится сам
+        (application as MetroApp).refreshLibrary()
+    }
 }

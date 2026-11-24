@@ -31,6 +31,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -653,6 +655,15 @@ fun SearchScreen(app: MetroApp, push: (Screen) -> Unit) {
 fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
     val c = Metro.colors
     val store = app.store
+    val gifScope = rememberCoroutineScope()
+    var gifMsg by remember { mutableStateOf<String?>(null) }
+    val gifPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            gifScope.launch {
+                gifMsg = if (store.importNoteGif(uri)) null else "не удалось загрузить файл (нужна картинка или гифка до 12 МБ)"
+            }
+        }
+    }
     Column(
         Modifier
             .fillMaxSize()
@@ -713,6 +724,12 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
             Modifier.padding(bottom = 20.dp)
         ) { store.chooseNowMode(it) }
 
+        SettingToggle(
+            "кнопки под обложкой", "Перемешать, повтор и избранное на экране «сейчас играет». Меню «···» остаётся.",
+            store.quickBar
+        ) { store.chooseQuickBar(!store.quickBar) }
+        Spacer(Modifier.height(12.dp))
+
         MText("ТЕКСТЫ ПЕСЕН", 12, Modifier.padding(bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
         OptionGroup(
             "режим текста",
@@ -729,6 +746,23 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
             "Заменяет исполнителя в уведомлении и на экране блокировки. Применится со следующей очереди.",
             store.lyricsInNotif
         ) { store.chooseLyricsInNotif(!store.lyricsInNotif) }
+
+        MText("ГИФКА ВМЕСТО НОТЫ", 12, Modifier.padding(top = 20.dp, bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+        MText(
+            "Показывается в тексте песни на проигрышах и вступлениях, когда в строке нет слов.",
+            14, Modifier.padding(bottom = 12.dp), color = c.subtle
+        )
+        NoteGif(96.dp, Modifier.padding(bottom = 4.dp))
+        Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            MetroTextButton("выбрать свою", null) { gifPicker.launch(arrayOf("image/*")) }
+            if (store.noteGif.isNotEmpty()) {
+                MetroTextButton("стандартная", null) {
+                    store.resetNoteGif()
+                    gifMsg = null
+                }
+            }
+        }
+        gifMsg?.let { MText(it, 14, Modifier.padding(top = 10.dp), color = c.accent) }
 
         MText(
             "о приложении", 22,

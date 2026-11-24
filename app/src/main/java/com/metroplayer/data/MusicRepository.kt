@@ -30,6 +30,7 @@ class MusicRepository(private val context: Context) {
 
     suspend fun load() {
         val scan = withContext(Dispatchers.IO) { scanDevice() }
+        if (loaded && scan.tracks == tracks) return
         byId = scan.tracks.associateBy { it.id }
         tracks = scan.tracks
         artists = scan.artists

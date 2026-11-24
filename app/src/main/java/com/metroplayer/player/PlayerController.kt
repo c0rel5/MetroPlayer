@@ -31,7 +31,9 @@ data class PlayerState(
     val queue: List<Track> = emptyList(),
     val shuffle: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
-    val speed: Float = 1f
+    val speed: Float = 1f,
+    /** Индексы очереди в порядке воспроизведения, начиная с текущего трека (учитывает shuffle). */
+    val order: List<Int> = emptyList()
 )
 
 /**
@@ -150,8 +152,24 @@ class PlayerController(
             queue = queue,
             shuffle = c.shuffleModeEnabled,
             repeatMode = c.repeatMode,
-            speed = c.playbackParameters.speed
+            speed = c.playbackParameters.speed,
+            order = playOrder(c)
         )
+    }
+
+    private fun playOrder(c: MediaController): List<Int> {
+        val count = c.mediaItemCount
+        val cur = c.currentMediaItemIndex
+        if (count == 0 || cur < 0 || cur >= count) return emptyList()
+        if (!c.shuffleModeEnabled) return (cur until count).toList()
+        val timeline = c.currentTimeline
+        val out = ArrayList<Int>(count)
+        var i = cur
+        while (i != C.INDEX_UNSET && out.size < count) {
+            out.add(i)
+            i = timeline.getNextWindowIndex(i, Player.REPEAT_MODE_OFF, true)
+        }
+        return out
     }
 
     fun positionMs(): Long = controller?.currentPosition ?: 0L

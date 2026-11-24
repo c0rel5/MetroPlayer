@@ -48,16 +48,22 @@ class MetroApp : Application() {
         if (!store.autoLyrics || id in inFlight) return
         val missAt = misses[id]
         if (missAt != null && System.currentTimeMillis() - missAt < 30 * 60_000L) return
+        // помечаем сразу, а не после suspend-вызова: иначе один трек могли искать два раза параллельно
+        inFlight.add(id)
         scope.launch {
-            if (lyrics.load(id) != null) return@launch
-            val t = repo.find(id) ?: return@launch
-            inFlight.add(id)
             try {
+                if (lyrics.load(id) != null) return@launch
+                val t = repo.find(id) ?: return@launch
                 val res = lyrics.fetchOnline(t)
                 if (res != null) lyrics.save(id, res) else misses[id] = System.currentTimeMillis()
             } finally {
                 inFlight.remove(id)
             }
         }
+    }
+
+    /** Перечитать музыку с устройства (например, после возвращения в приложение). */
+    fun refreshLibrary() {
+        scope.launch { if (repo.loaded) repo.load() }
     }
 }

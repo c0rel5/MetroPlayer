@@ -2,6 +2,9 @@ package com.metroplayer.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -40,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -197,19 +201,37 @@ private fun NowPage(
                 .padding(horizontal = 24.dp)
         ) {
             Spacer(Modifier.height(4.dp))
-            if (showLyrics) {
-                LyricsCoverPanel(
-                    lyrics, lyricsPos, onToggle = toggleView, onOpen = onOpenLyrics,
-                    modifier = Modifier.size(cover).align(Alignment.CenterHorizontally)
-                )
-            } else {
-                Cover(
-                    t,
-                    Modifier
-                        .size(cover)
-                        .align(Alignment.CenterHorizontally)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { toggleView() }
-                )
+            // Тап по обложке: карточка переворачивается вокруг вертикальной оси, и на обратной стороне — текст песни
+            AnimatedContent(
+                targetState = showLyrics,
+                modifier = Modifier.size(cover).align(Alignment.CenterHorizontally),
+                transitionSpec = { fadeIn(tween(160, delayMillis = 150)) togetherWith fadeOut(tween(120)) },
+                label = "coverFlip"
+            ) { lyricsOn ->
+                val rot by transition.animateFloat(
+                    transitionSpec = { tween(320, easing = FastOutSlowInEasing) },
+                    label = "flipRot"
+                ) { s ->
+                    when (s) {
+                        EnterExitState.PreEnter -> -90f
+                        EnterExitState.Visible -> 0f
+                        EnterExitState.PostExit -> 90f
+                    }
+                }
+                val flip = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        rotationY = rot
+                        cameraDistance = 14f * density
+                    }
+                if (lyricsOn) {
+                    LyricsCoverPanel(lyrics, lyricsPos, onToggle = toggleView, onOpen = onOpenLyrics, modifier = flip)
+                } else {
+                    Cover(
+                        t,
+                        flip.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { toggleView() }
+                    )
+                }
             }
             // при смене трека название и исполнитель «уезжают» влево, новые приезжают справа
             AnimatedContent(
@@ -249,17 +271,19 @@ private fun NowPage(
             // быстрые режимы: перемешать · повтор · избранное · меню
             Row(
                 Modifier.fillMaxWidth().padding(top = 6.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                horizontalArrangement = if (app.store.quickBar) Arrangement.SpaceEvenly else Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                RoundIconButton(Ic.SHUFFLE, if (st.shuffle) c.accent else c.subtle, "перемешать") { app.player.toggleShuffle() }
-                RoundIconButton(
-                    if (st.repeatMode == Player.REPEAT_MODE_ONE) Ic.REPEAT_ONE else Ic.REPEAT,
-                    if (st.repeatMode != Player.REPEAT_MODE_OFF) c.accent else c.subtle,
-                    "повтор"
-                ) { app.player.cycleRepeat() }
-                RoundIconButton(Ic.HEART, if (fav) c.accent else c.subtle, "избранное", filled = fav) {
-                    if (t != null) app.store.toggleFavorite(t.id)
+                if (app.store.quickBar) {
+                    RoundIconButton(Ic.SHUFFLE, if (st.shuffle) c.accent else c.subtle, "перемешать") { app.player.toggleShuffle() }
+                    RoundIconButton(
+                        if (st.repeatMode == Player.REPEAT_MODE_ONE) Ic.REPEAT_ONE else Ic.REPEAT,
+                        if (st.repeatMode != Player.REPEAT_MODE_OFF) c.accent else c.subtle,
+                        "повтор"
+                    ) { app.player.cycleRepeat() }
+                    RoundIconButton(Ic.HEART, if (fav) c.accent else c.subtle, "избранное", filled = fav) {
+                        if (t != null) app.store.toggleFavorite(t.id)
+                    }
                 }
                 Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) { Ellipsis(c.subtle, onMore) }
             }
@@ -272,27 +296,28 @@ private fun NowPage(
 
 @Composable
 private fun QueuePage(app: MetroApp, st: PlayerState, onMore: (Int) -> Unit) {
-    val offset = st.currentIndex.coerceAtLeast(0)
-    val upcoming = st.queue.drop(offset)
-    if (upcoming.isEmpty()) {
+    // индексы треков в том порядке, в котором они реально заиграют (при shuffle он не совпадает со списком)
+    val order = st.order.filter { it in st.queue.indices }
+    if (order.isEmpty()) {
         EmptyHint("очередь пуста")
         return
     }
     LazyColumn(Modifier.fillMaxSize()) {
         item {
             MText(
-                "в очереди: ${plural(upcoming.size, "трек", "трека", "треков")} · удерживайте трек для меню", 13,
+                "в очереди: ${plural(order.size, "трек", "трека", "треков")} · удерживайте трек для меню", 13,
                 Modifier.padding(start = 24.dp, end = 24.dp, bottom = 6.dp), color = Metro.colors.subtle
             )
         }
-        itemsIndexed(upcoming) { i, t ->
+        itemsIndexed(order) { i, idx ->
+            val t = st.queue[idx]
             TrackRow(
                 title = t.title,
                 subtitle = "${t.artist} · ${fmt(t.durationMs)}",
                 highlighted = i == 0 && st.currentIndex >= 0,
-                onClick = { app.player.seekToIndex(offset + i) },
-                onLongClick = { onMore(offset + i) },
-                onMore = { onMore(offset + i) },
+                onClick = { app.player.seekToIndex(idx) },
+                onLongClick = { onMore(idx) },
+                onMore = { onMore(idx) },
                 enterIndex = i
             )
         }

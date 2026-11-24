@@ -1,16 +1,25 @@
 package com.metroplayer.data
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 
 /** Избранное, плейлисты, история и настройки. Всё хранится в SharedPreferences. */
 class Store(context: Context) {
+    private val appContext = context.applicationContext
     private val prefs = context.getSharedPreferences("metro", Context.MODE_PRIVATE)
+
+    // Имя файла своей гифки вместо ноты (лежит в filesDir/gif). Пусто — стандартная гифка.
+    var noteGif by mutableStateOf(prefs.getString("noteGif", "").orEmpty())
+        private set
 
     // 0 — как в системе, 1 — тёмная, 2 — светлая
     var themeMode by mutableIntStateOf(prefs.getInt("theme", 1))
@@ -38,6 +47,10 @@ class Store(context: Context) {
 
     // Экран «сейчас играет»: 0 — обложка (+ полоска текста), 1 — текст вместо обложки
     var nowMode by mutableIntStateOf(prefs.getInt("nowMode", 0))
+        private set
+
+    // Ряд кнопок под управлением на экране «сейчас играет»: перемешать · повтор · избранное
+    var quickBar by mutableStateOf(prefs.getBoolean("quickBar", true))
         private set
 
     var favorites by mutableStateOf(readIds("fav").toSet())
@@ -76,6 +89,11 @@ class Store(context: Context) {
         prefs.edit().putInt("skin", v).apply()
     }
 
+    fun chooseQuickBar(v: Boolean) {
+        quickBar = v
+        prefs.edit().putBoolean("quickBar", v).apply()
+    }
+
     fun chooseNowMode(v: Int) {
         nowMode = v
         prefs.edit().putInt("nowMode", v).apply()
@@ -84,6 +102,64 @@ class Store(context: Context) {
     fun chooseLyricsMode(v: Int) {
         lyricsMode = v
         prefs.edit().putInt("lyricsMode", v).apply()
+    }
+
+    private fun gifDir() = File(appContext.filesDir, "gif")
+
+    /** Файл своей гифки или null, если выбрана стандартная (или файл пропал). */
+    fun noteGifFile(): File? =
+        noteGif.takeIf { it.isNotEmpty() }?.let { File(gifDir(), it) }?.takeIf { it.exists() }
+
+    /**
+     * Копирует выбранную пользователем картинку/гифку в приватную папку приложения
+     * (доступ к исходному файлу потом не нужен). Возвращает false, если файл не подошёл.
+     */
+    suspend fun importNoteGif(uri: Uri): Boolean {
+        val name = withContext(Dispatchers.IO) {
+            try {
+                val dir = gifDir().apply { mkdirs() }
+                val out = File(dir, "note_${System.currentTimeMillis()}.gif")
+                var total = 0L
+                var tooBig = false
+                val opened = appContext.contentResolver.openInputStream(uri)?.use { input ->
+                    out.outputStream().use { o ->
+                        val buf = ByteArray(64 * 1024)
+                        var n = input.read(buf)
+                        while (n >= 0) {
+                            total += n
+                            if (total > MAX_GIF_BYTES) {
+                                tooBig = true
+                                break
+                            }
+                            o.write(buf, 0, n)
+                            n = input.read(buf)
+                        }
+                    }
+                    true
+                } ?: false
+                if (!opened || tooBig || total == 0L) {
+                    out.delete()
+                    null
+                } else {
+                    out.name
+                }
+            } catch (e: Exception) {
+                null
+            }
+        } ?: return false
+        val old = noteGif
+        noteGif = name
+        prefs.edit().putString("noteGif", name).apply()
+        if (old.isNotEmpty()) withContext(Dispatchers.IO) { File(gifDir(), old).delete() }
+        return true
+    }
+
+    /** Вернуть стандартную гифку и удалить свою. */
+    fun resetNoteGif() {
+        val old = noteGif
+        noteGif = ""
+        prefs.edit().putString("noteGif", "").apply()
+        if (old.isNotEmpty()) File(gifDir(), old).delete()
     }
 
     fun isFavorite(id: Long) = id in favorites
@@ -152,5 +228,9 @@ class Store(context: Context) {
             arr.put(JSONObject().put("id", p.id).put("n", p.name).put("t", ids))
         }
         prefs.edit().putString("playlists", arr.toString()).apply()
+    }
+
+    private companion object {
+        const val MAX_GIF_BYTES = 12L * 1024 * 1024
     }
 }

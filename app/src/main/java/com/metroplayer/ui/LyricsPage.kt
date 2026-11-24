@@ -256,7 +256,7 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
                                     transformOrigin = TransformOrigin(0f, 0.5f)
                                 }
                                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                                    app.player.seekTo(l.timeMs)
+                                    app.player.seekTo((l.timeMs - shift).coerceAtLeast(0L))
                                 },
                             color = lineColor
                         )
