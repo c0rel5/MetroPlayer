@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -201,12 +202,16 @@ fun Modifier.metroPress(
 @Composable
 fun Modifier.metroEnter(index: Int, stepMs: Int = 45, maxAnimated: Int = 14, tiltDeg: Float = 55f): Modifier {
     val enabled = index in 0 until maxAnimated
-    val p = remember { Animatable(if (enabled) 0f else 1f) }
+    // Строка «влетает» один раз. Раньше при прокрутке вверх первые строки списка пересоздавались
+    // и влетали заново (мигали). rememberSaveable переживает выход строки за экран внутри LazyColumn.
+    var played by rememberSaveable { mutableStateOf(false) }
+    val p = remember { Animatable(if (enabled && !played) 0f else 1f) }
     LaunchedEffect(Unit) {
-        if (enabled) {
+        if (enabled && !played) {
             delay(index * stepMs.toLong())
             p.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
         }
+        played = true
     }
     return this.graphicsLayer {
         val v = p.value

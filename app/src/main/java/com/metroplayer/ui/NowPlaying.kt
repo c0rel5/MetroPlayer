@@ -271,7 +271,7 @@ private fun NowPage(
             // быстрые режимы: перемешать · повтор · избранное · меню
             Row(
                 Modifier.fillMaxWidth().padding(top = 6.dp),
-                horizontalArrangement = if (app.store.quickBar) Arrangement.SpaceEvenly else Arrangement.Center,
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (app.store.quickBar) {
@@ -284,6 +284,9 @@ private fun NowPage(
                     RoundIconButton(Ic.HEART, if (fav) c.accent else c.subtle, "избранное", filled = fav) {
                         if (t != null) app.store.toggleFavorite(t.id)
                     }
+                } else {
+                    // пустые места на месте скрытых кнопок: «···» остаётся там же, где и была
+                    repeat(3) { Spacer(Modifier.size(52.dp)) }
                 }
                 Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) { Ellipsis(c.subtle, onMore) }
             }

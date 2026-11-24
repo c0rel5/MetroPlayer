@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -244,21 +245,36 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
                         NoteGif(96.dp, Modifier.padding(vertical = 4.dp))
                     } else {
                         // цвет и размер строки меняются плавно
-                        val lineColor by animateColorAsState(if (on) c.accent else c.inactive, tween(400), label = "lyricColor")
-                        val lineScale by animateFloatAsState(if (on) 1f else 0.8f, tween(400), label = "lyricScale")
-                        MText(
+                        val dist = if (active < 0) 3 else kotlin.math.abs(i - active)
+                        val targetAlpha = when (dist) {
+                            0 -> 1f
+                            1 -> 0.6f
+                            2 -> 0.42f
+                            else -> 0.3f
+                        }
+                        val targetScale = when (dist) {
+                            0 -> 1f
+                            1 -> 0.88f
+                            else -> 0.8f
+                        }
+                        val lineColor by animateColorAsState(if (on) c.accent else c.fg, tween(400), label = "lyricColor")
+                        val lineScale by animateFloatAsState(targetScale, spring(dampingRatio = 0.7f, stiffness = 220f), label = "lyricScale")
+                        val lineAlpha by animateFloatAsState(targetAlpha, tween(450), label = "lyricAlpha")
+                        RevealMText(
                             l.text.ifEmpty { "♪" }, 26,
                             Modifier
                                 .fillMaxWidth()
                                 .graphicsLayer {
                                     scaleX = lineScale
                                     scaleY = lineScale
+                                    alpha = lineAlpha
                                     transformOrigin = TransformOrigin(0f, 0.5f)
                                 }
                                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                                     app.player.seekTo((l.timeMs - shift).coerceAtLeast(0L))
                                 },
-                            color = lineColor
+                            color = lineColor,
+                            play = on
                         )
                     }
                 }

@@ -1,4 +1,4 @@
-## Metro Player 2.2
+## Metro Player 2.3
 
 **Install over your current version — no need to uninstall.** Every build is signed with the same key.
 
@@ -8,7 +8,11 @@
 
 - **Optional buttons under the cover.** Settings → *buttons under the cover* hides shuffle / repeat / favorite on Now Playing (the "···" menu stays).
 
+- **Default format.** Settings → *default format in lists* (e.g. `.flac`): lists open with that format already selected when it is present.
+- **Better lyric animations.** Words light up one by one on the active line, lines scale with a soft spring and fade by distance on both the cover panel and the Lyrics tab.
+
 ### Fixed
+- List rows no longer fly in again when you scroll back up.
 - Tapping a lyric line now seeks to the right place when a sync offset is set (it ignored the offset before).
 - The queue now shows the real play order when shuffle is on (it used to show the original order).
 - GIFs share one image loader — less memory use and fewer stutters.

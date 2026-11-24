@@ -49,6 +49,10 @@ class Store(context: Context) {
     var nowMode by mutableIntStateOf(prefs.getInt("nowMode", 0))
         private set
 
+    // Формат, который автоматически выбирается в фильтре списков («flac»); пусто — показывать все
+    var defaultFormat by mutableStateOf(prefs.getString("defaultFormat", "").orEmpty())
+        private set
+
     // Ряд кнопок под управлением на экране «сейчас играет»: перемешать · повтор · избранное
     var quickBar by mutableStateOf(prefs.getBoolean("quickBar", true))
         private set
@@ -87,6 +91,11 @@ class Store(context: Context) {
     fun chooseSkin(v: Int) {
         skin = v
         prefs.edit().putInt("skin", v).apply()
+    }
+
+    fun chooseDefaultFormat(v: String) {
+        defaultFormat = v
+        prefs.edit().putString("defaultFormat", v).apply()
     }
 
     fun chooseQuickBar(v: Boolean) {

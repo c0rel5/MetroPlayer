@@ -1,8 +1,11 @@
 package com.metroplayer.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -75,6 +78,32 @@ fun NoteGif(size: Dp, modifier: Modifier = Modifier) {
     )
 }
 
+/**
+ * Строка текста, у которой при [play] слова загораются по очереди (karaoke-стиль).
+ * Когда [play] выключен, показывается целиком.
+ */
+@Composable
+fun RevealMText(
+    text: String,
+    size: Int,
+    modifier: Modifier = Modifier,
+    weight: FontWeight = FontWeight.Light,
+    color: androidx.compose.ui.graphics.Color = Metro.colors.fg,
+    maxLines: Int = Int.MAX_VALUE,
+    align: TextAlign = TextAlign.Start,
+    play: Boolean = true
+) {
+    // ключ включает play: когда строка становится активной, анимация создаётся сразу с нуля — без мерцания
+    val progress = remember(text, play) { Animatable(if (play) 0f else 1f) }
+    LaunchedEffect(progress) {
+        if (progress.value < 1f) {
+            val words = text.trim().split(Regex("\\s+")).size
+            progress.animateTo(1f, tween((380 + words * 70).coerceAtMost(1000), easing = LinearEasing))
+        }
+    }
+    MText(text, size, modifier, weight, color, maxLines = maxLines, align = align, progress = progress.value)
+}
+
 private fun activeIndex(l: Lyrics, posMs: Long): Int =
     if (l.synced) l.lines.indexOfLast { it.timeMs <= posMs } else -1
 
@@ -110,7 +139,7 @@ fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit) {
                 ) { (curText, nextText) ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         if (curText.isEmpty()) NoteGif(48.dp)
-                        else MText(curText, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
+                        else RevealMText(curText, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
                         MText(nextText, 16, Modifier.fillMaxWidth().padding(top = 4.dp), color = c.subtle, maxLines = 1, align = TextAlign.Center)
                     }
                 }
@@ -187,14 +216,14 @@ fun LyricsCoverPanel(lyrics: Lyrics?, pos: Long, onToggle: () -> Unit, onOpen: (
                                 2 -> 0.4f
                                 else -> 0.25f
                             }
-                            val lineScale by animateFloatAsState(targetScale, tween(500), label = "lineScale")
+                            val lineScale by animateFloatAsState(targetScale, spring(dampingRatio = 0.7f, stiffness = 200f), label = "lineScale")
                             val lineAlpha by animateFloatAsState(targetAlpha, tween(500), label = "lineAlpha")
                             if (on && line.text.isEmpty()) {
                                 Box(Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
                                     NoteGif(72.dp)
                                 }
                             } else {
-                                MText(
+                                RevealMText(
                                     line.text.ifEmpty { "♪" }, 22,
                                     Modifier
                                         .fillMaxWidth()
@@ -206,7 +235,7 @@ fun LyricsCoverPanel(lyrics: Lyrics?, pos: Long, onToggle: () -> Unit, onOpen: (
                                         },
                                     weight = if (on) FontWeight.SemiBold else FontWeight.Light,
                                     color = if (on) c.accent else c.fg,
-                                    align = TextAlign.Center, maxLines = 3
+                                    align = TextAlign.Center, maxLines = 3, play = on
                                 )
                             }
                         }

@@ -422,7 +422,8 @@ fun TrackListScreen(
     var trackMenu by remember { mutableStateOf(false) }
 
     // Фильтр по формату файла: null — показывать все
-    var formatFilter by remember { mutableStateOf<String?>(null) }
+    // начальное значение берётся из настроек; если такого формата в списке нет, показываются все треки
+    var formatFilter by remember { mutableStateOf<String?>(store.defaultFormat.takeIf { it.isNotEmpty() }) }
     val formatCounts = remember(allTracks) {
         allTracks.filter { it.format.isNotEmpty() }
             .groupingBy { it.format }.eachCount()
@@ -729,6 +730,28 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
             store.quickBar
         ) { store.chooseQuickBar(!store.quickBar) }
         Spacer(Modifier.height(12.dp))
+
+        val libFormats = remember(app.repo.tracks) {
+            app.repo.tracks.filter { it.format.isNotEmpty() }
+                .groupingBy { it.format }.eachCount()
+                .entries.sortedByDescending { it.value }.map { it.key }
+        }
+        val missingFormat = store.defaultFormat.takeIf { it.isNotEmpty() && it !in libFormats }
+        val formatOptions = buildList<Pair<String, String>> {
+            add("все форматы" to "")
+            libFormats.forEach { add(".$it" to it) }
+            if (missingFormat != null) add(".$missingFormat (нет в библиотеке)" to missingFormat)
+        }
+        OptionGroup(
+            "формат по умолчанию в списках",
+            formatOptions,
+            store.defaultFormat,
+            Modifier.padding(bottom = 4.dp)
+        ) { store.chooseDefaultFormat(it) }
+        MText(
+            "В любом списке сразу откроются треки только этого формата, если они там есть. Если нет — покажутся все.",
+            14, Modifier.padding(bottom = 20.dp), color = c.subtle
+        )
 
         MText("ТЕКСТЫ ПЕСЕН", 12, Modifier.padding(bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
         OptionGroup(

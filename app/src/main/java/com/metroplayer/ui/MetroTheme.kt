@@ -20,7 +20,10 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -204,25 +207,55 @@ fun MText(
     lh: Float = 1.25f,
     maxLines: Int = Int.MAX_VALUE,
     softWrap: Boolean = true,
-    align: TextAlign = TextAlign.Start
+    align: TextAlign = TextAlign.Start,
+    /** 1 — весь текст виден; меньше — слова проявляются по очереди слева направо. */
+    progress: Float = 1f
 ) {
     val w = if (weight == FontWeight.Light && Metro.colors.skin != 0) FontWeight.Normal else weight
-    BasicText(
-        text = text,
-        modifier = modifier,
-        style = TextStyle(
-            fontFamily = MetroFont,
-            fontSize = size.sp,
-            fontWeight = w,
-            color = color,
-            letterSpacing = spacing.sp,
-            lineHeight = (size * lh).sp,
-            textAlign = align
-        ),
-        overflow = if (maxLines == 1) TextOverflow.Ellipsis else TextOverflow.Clip,
-        softWrap = softWrap,
-        maxLines = maxLines
+    val style = TextStyle(
+        fontFamily = MetroFont,
+        fontSize = size.sp,
+        fontWeight = w,
+        color = color,
+        letterSpacing = spacing.sp,
+        lineHeight = (size * lh).sp,
+        textAlign = align
     )
+    val overflow = if (maxLines == 1) TextOverflow.Ellipsis else TextOverflow.Clip
+    if (progress >= 1f) {
+        BasicText(
+            text = text,
+            modifier = modifier,
+            style = style,
+            overflow = overflow,
+            softWrap = softWrap,
+            maxLines = maxLines
+        )
+    } else {
+        BasicText(
+            text = revealString(text, color, progress),
+            modifier = modifier,
+            style = style,
+            overflow = overflow,
+            softWrap = softWrap,
+            maxLines = maxLines
+        )
+    }
+}
+
+private val wordRegex = Regex("\\S+")
+
+/** Каждое слово получает свою прозрачность: слова загораются по очереди, пока [progress] растёт до 1. */
+private fun revealString(text: String, base: Color, progress: Float): AnnotatedString {
+    val words = wordRegex.findAll(text).toList()
+    val n = words.size.coerceAtLeast(1)
+    return buildAnnotatedString {
+        append(text)
+        words.forEachIndexed { i, m ->
+            val a = ((progress - i.toFloat() / n * 0.6f) / 0.4f).coerceIn(0f, 1f)
+            addStyle(SpanStyle(color = base.copy(alpha = base.alpha * a)), m.range.first, m.range.last + 1)
+        }
+    }
 }
 
 fun fmt(ms: Long): String {
