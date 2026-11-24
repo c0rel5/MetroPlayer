@@ -2,7 +2,14 @@
 
 A music player for Android inspired by Windows Phone's Metro design.
 
-[**Download the latest APK**](https://github.com/c0rel5/MetroPlayer/releases/latest)
+**Latest version: 2.4** · [Download the APK](https://github.com/c0rel5/MetroPlayer/releases/latest) · [All releases](https://github.com/c0rel5/MetroPlayer/releases)
+
+## What's new in 2.4
+
+- **Two lyric animations to choose from.** Settings → Lyrics → text animation: the new one (lines glide to the center, words light up one by one) or the classic one (the block of lines slides in).
+- The source code is now fully open.
+
+See [Releases](https://github.com/c0rel5/MetroPlayer/releases) for the full changelog.
 
 ## Features
 
@@ -25,7 +32,7 @@ A music player for Android inspired by Windows Phone's Metro design.
 - Fetched from [lrclib.net](https://lrclib.net) or loaded from a `.lrc` / `.txt` file
 - Per-track sync offset (±0.5 s)
 - Two display modes: synced (auto-scroll) and selectable (static, copyable text)
-- Two animations to choose from: lines glide to the center with words lighting up one by one, or the classic sliding window
+- Two animations to choose from
 - Tap the cover to flip the card and show lyrics on the back
 - Custom GIF in place of the note during instrumental breaks
 
@@ -40,7 +47,7 @@ A music player for Android inspired by Windows Phone's Metro design.
 2. Allow installation from unknown sources and install the file.
 3. Grant access to audio and notifications on first launch.
 
-Every build is signed with the same key, so new versions install over old ones without uninstalling.
+Install over your current version, no need to uninstall. Every build is signed with the same key.
 
 Requires Android 8.0 (API 26) or newer.
 
