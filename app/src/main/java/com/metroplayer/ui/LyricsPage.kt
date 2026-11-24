@@ -245,20 +245,29 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
                         NoteGif(96.dp, Modifier.padding(vertical = 4.dp))
                     } else {
                         // цвет и размер строки меняются плавно
+                        val classic = app.store.lyricsAnim == 1
                         val dist = if (active < 0) 3 else kotlin.math.abs(i - active)
-                        val targetAlpha = when (dist) {
+                        val targetAlpha = if (classic) 1f else when (dist) {
                             0 -> 1f
                             1 -> 0.6f
                             2 -> 0.42f
                             else -> 0.3f
                         }
-                        val targetScale = when (dist) {
+                        val targetScale = if (classic) {
+                            if (on) 1f else 0.8f
+                        } else when (dist) {
                             0 -> 1f
                             1 -> 0.88f
                             else -> 0.8f
                         }
-                        val lineColor by animateColorAsState(if (on) c.accent else c.fg, tween(400), label = "lyricColor")
-                        val lineScale by animateFloatAsState(targetScale, spring(dampingRatio = 0.7f, stiffness = 220f), label = "lyricScale")
+                        val lineColor by animateColorAsState(
+                            if (on) c.accent else if (classic) c.inactive else c.fg, tween(400), label = "lyricColor"
+                        )
+                        val lineScale by animateFloatAsState(
+                            targetScale,
+                            if (classic) tween(400) else spring(dampingRatio = 0.7f, stiffness = 220f),
+                            label = "lyricScale"
+                        )
                         val lineAlpha by animateFloatAsState(targetAlpha, tween(450), label = "lyricAlpha")
                         RevealMText(
                             l.text.ifEmpty { "♪" }, 26,
@@ -274,7 +283,7 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
                                     app.player.seekTo((l.timeMs - shift).coerceAtLeast(0L))
                                 },
                             color = lineColor,
-                            play = on
+                            play = on && !classic
                         )
                     }
                 }

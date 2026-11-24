@@ -109,7 +109,7 @@ private fun activeIndex(l: Lyrics, posMs: Long): Int =
 
 /** Вариант 1: две строки под кнопками — текущая и следующая. Тап открывает вкладку «текст». */
 @Composable
-fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit) {
+fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit, classic: Boolean = false) {
     val c = Metro.colors
     Column(
         Modifier
@@ -139,6 +139,7 @@ fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit) {
                 ) { (curText, nextText) ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                         if (curText.isEmpty()) NoteGif(48.dp)
+                        else if (classic) MText(curText, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
                         else RevealMText(curText, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
                         MText(nextText, 16, Modifier.fillMaxWidth().padding(top = 4.dp), color = c.subtle, maxLines = 1, align = TextAlign.Center)
                     }
@@ -153,7 +154,14 @@ fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit) {
  * обычный — прокручиваемый. Тап возвращает обложку.
  */
 @Composable
-fun LyricsCoverPanel(lyrics: Lyrics?, pos: Long, onToggle: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun LyricsCoverPanel(
+    lyrics: Lyrics?,
+    pos: Long,
+    onToggle: () -> Unit,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    classic: Boolean = false
+) {
     val c = Metro.colors
     Box(
         modifier
@@ -176,72 +184,113 @@ fun LyricsCoverPanel(lyrics: Lyrics?, pos: Long, onToggle: () -> Unit, onOpen: (
             !lyrics.synced -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                 lyrics.lines.forEach { MText(it.text.ifEmpty { " " }, 18, Modifier.fillMaxWidth(), color = c.fg) }
             }
-            else -> {
-                val iNow = activeIndex(lyrics, pos)
-                val listState = rememberLazyListState()
-                // Строки не «прыгают» окном, а плавно плывут: активная строка мягко уезжает в центр панели,
-                // соседние уменьшаются и бледнеют по мере удаления от неё.
-                LaunchedEffect(iNow, lyrics) {
-                    if (iNow < 0) {
-                        listState.scrollToItem(0)
-                        return@LaunchedEffect
-                    }
-                    val li = iNow + 1   // нулевой элемент списка — отступ сверху
-                    if (listState.layoutInfo.visibleItemsInfo.none { it.index == li }) listState.scrollToItem(li)
-                    val info = listState.layoutInfo
-                    val item = info.visibleItemsInfo.firstOrNull { it.index == li } ?: return@LaunchedEffect
-                    val center = (info.viewportStartOffset + info.viewportEndOffset) / 2f
-                    listState.animateScrollBy(item.offset + item.size / 2f - center, tween(600, easing = FastOutSlowInEasing))
+            else -> if (classic) ClassicLyrics(lyrics, pos) else GlideLyrics(lyrics, pos)
+        }
+    }
+}
+
+/** Новая анимация: строки плавно плывут к центру, слова активной строки загораются по очереди. */
+@Composable
+private fun GlideLyrics(lyrics: Lyrics, pos: Long) {
+    val c = Metro.colors
+    val iNow = activeIndex(lyrics, pos)
+    val listState = rememberLazyListState()
+    // Строки не «прыгают» окном, а плавно плывут: активная строка мягко уезжает в центр панели,
+    // соседние уменьшаются и бледнеют по мере удаления от неё.
+    LaunchedEffect(iNow, lyrics) {
+        if (iNow < 0) {
+            listState.scrollToItem(0)
+            return@LaunchedEffect
+        }
+        val li = iNow + 1   // нулевой элемент списка — отступ сверху
+        if (listState.layoutInfo.visibleItemsInfo.none { it.index == li }) listState.scrollToItem(li)
+        val info = listState.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.index == li } ?: return@LaunchedEffect
+        val center = (info.viewportStartOffset + info.viewportEndOffset) / 2f
+        listState.animateScrollBy(item.offset + item.size / 2f - center, tween(600, easing = FastOutSlowInEasing))
+    }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val pad = maxHeight / 2
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            state = listState,
+            userScrollEnabled = false,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            item { Spacer(Modifier.height(pad)) }
+            itemsIndexed(lyrics.lines) { k, line ->
+                val dist = if (iNow < 0) 3 else kotlin.math.abs(k - iNow)
+                val on = dist == 0
+                val targetScale = when (dist) {
+                    0 -> 1f
+                    1 -> 0.84f
+                    else -> 0.72f
                 }
-                BoxWithConstraints(Modifier.fillMaxSize()) {
-                    val pad = maxHeight / 2
-                    LazyColumn(
-                        Modifier.fillMaxSize(),
-                        state = listState,
-                        userScrollEnabled = false,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        item { Spacer(Modifier.height(pad)) }
-                        itemsIndexed(lyrics.lines) { k, line ->
-                            val dist = if (iNow < 0) 3 else kotlin.math.abs(k - iNow)
-                            val on = dist == 0
-                            val targetScale = when (dist) {
-                                0 -> 1f
-                                1 -> 0.84f
-                                else -> 0.72f
-                            }
-                            val targetAlpha = when (dist) {
-                                0 -> 1f
-                                1 -> 0.6f
-                                2 -> 0.4f
-                                else -> 0.25f
-                            }
-                            val lineScale by animateFloatAsState(targetScale, spring(dampingRatio = 0.7f, stiffness = 200f), label = "lineScale")
-                            val lineAlpha by animateFloatAsState(targetAlpha, tween(500), label = "lineAlpha")
-                            if (on && line.text.isEmpty()) {
-                                Box(Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
-                                    NoteGif(72.dp)
-                                }
-                            } else {
-                                RevealMText(
-                                    line.text.ifEmpty { "♪" }, 22,
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 6.dp)
-                                        .graphicsLayer {
-                                            scaleX = lineScale
-                                            scaleY = lineScale
-                                            alpha = lineAlpha
-                                        },
-                                    weight = if (on) FontWeight.SemiBold else FontWeight.Light,
-                                    color = if (on) c.accent else c.fg,
-                                    align = TextAlign.Center, maxLines = 3, play = on
-                                )
-                            }
-                        }
-                        item { Spacer(Modifier.height(pad)) }
-                    }
+                val targetAlpha = when (dist) {
+                    0 -> 1f
+                    1 -> 0.6f
+                    2 -> 0.4f
+                    else -> 0.25f
                 }
+                val lineScale by animateFloatAsState(targetScale, spring(dampingRatio = 0.7f, stiffness = 200f), label = "lineScale")
+                val lineAlpha by animateFloatAsState(targetAlpha, tween(500), label = "lineAlpha")
+                if (on && line.text.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                        NoteGif(72.dp)
+                    }
+                } else {
+                    RevealMText(
+                        line.text.ifEmpty { "♪" }, 22,
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 6.dp)
+                            .graphicsLayer {
+                                scaleX = lineScale
+                                scaleY = lineScale
+                                alpha = lineAlpha
+                            },
+                        weight = if (on) FontWeight.SemiBold else FontWeight.Light,
+                        color = if (on) c.accent else c.fg,
+                        align = TextAlign.Center, maxLines = 3, play = on
+                    )
+                }
+            }
+            item { Spacer(Modifier.height(pad)) }
+        }
+    }
+            }
+
+/** Старая анимация: окно из пяти строк целиком выезжает снизу при смене строки. */
+@Composable
+private fun ClassicLyrics(lyrics: Lyrics, pos: Long) {
+    val c = Metro.colors
+    val iNow = activeIndex(lyrics, pos)
+    AnimatedContent(
+        targetState = iNow,
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+        transitionSpec = {
+            (slideInVertically(tween(420)) { it / 5 } + fadeIn(tween(420))) togetherWith
+                (slideOutVertically(tween(420)) { -it / 5 } + fadeOut(tween(260)))
+        },
+        label = "lyricCover"
+    ) { i ->
+        val from = (i - 2).coerceAtLeast(0)
+        val to = (from + 5).coerceAtMost(lyrics.lines.size)
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            for (k in from until to) {
+                val on = k == i
+                if (on && lyrics.lines[k].text.isEmpty()) {
+                    NoteGif(72.dp, Modifier.padding(vertical = 5.dp))
+                    continue
+                }
+                MText(
+                    lyrics.lines[k].text.ifEmpty { "♪" }, if (on) 24 else 18,
+                    Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                    weight = if (on) FontWeight.SemiBold else FontWeight.Light,
+                    color = if (on) c.accent else c.inactive,
+                    align = TextAlign.Center, maxLines = 3
+                )
             }
         }
     }

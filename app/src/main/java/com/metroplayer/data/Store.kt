@@ -49,6 +49,10 @@ class Store(context: Context) {
     var nowMode by mutableIntStateOf(prefs.getInt("nowMode", 0))
         private set
 
+    // Анимация текста песни: 0 — новая (плывёт, слова загораются), 1 — старая (слайд окна строк)
+    var lyricsAnim by mutableIntStateOf(prefs.getInt("lyricsAnim", 0))
+        private set
+
     // Формат, который автоматически выбирается в фильтре списков («flac»); пусто — показывать все
     var defaultFormat by mutableStateOf(prefs.getString("defaultFormat", "").orEmpty())
         private set
@@ -91,6 +95,11 @@ class Store(context: Context) {
     fun chooseSkin(v: Int) {
         skin = v
         prefs.edit().putInt("skin", v).apply()
+    }
+
+    fun chooseLyricsAnim(v: Int) {
+        lyricsAnim = v
+        prefs.edit().putInt("lyricsAnim", v).apply()
     }
 
     fun chooseDefaultFormat(v: String) {

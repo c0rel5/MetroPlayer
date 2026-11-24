@@ -760,6 +760,12 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
             store.lyricsMode,
             Modifier.padding(bottom = 12.dp)
         ) { store.chooseLyricsMode(it) }
+        OptionGroup(
+            "анимация текста",
+            listOf("новая — строки плывут, слова загораются" to 0, "старая — строки сменяются слайдом" to 1),
+            store.lyricsAnim,
+            Modifier.padding(bottom = 12.dp)
+        ) { store.chooseLyricsAnim(it) }
         SettingToggle(
             "искать тексты автоматически", "lrclib.net — для текущего и следующего трека",
             store.autoLyrics

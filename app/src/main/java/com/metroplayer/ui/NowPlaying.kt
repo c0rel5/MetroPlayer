@@ -225,7 +225,10 @@ private fun NowPage(
                         cameraDistance = 14f * density
                     }
                 if (lyricsOn) {
-                    LyricsCoverPanel(lyrics, lyricsPos, onToggle = toggleView, onOpen = onOpenLyrics, modifier = flip)
+                    LyricsCoverPanel(
+                        lyrics, lyricsPos, onToggle = toggleView, onOpen = onOpenLyrics, modifier = flip,
+                        classic = app.store.lyricsAnim == 1
+                    )
                 } else {
                     Cover(
                         t,
@@ -291,7 +294,7 @@ private fun NowPage(
                 Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) { Ellipsis(c.subtle, onMore) }
             }
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                if (!showLyrics) LyricsStrip(lyrics, lyricsPos, onOpenLyrics)
+                if (!showLyrics) LyricsStrip(lyrics, lyricsPos, onOpenLyrics, classic = app.store.lyricsAnim == 1)
             }
         }
     }
