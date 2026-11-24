@@ -1,8 +1,13 @@
 # Metro Player
 
+[![Release](https://img.shields.io/github/v/release/c0rel5/MetroPlayer?display_name=tag)](https://github.com/c0rel5/MetroPlayer/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/c0rel5/MetroPlayer/build.yml)](https://github.com/c0rel5/MetroPlayer/actions)
+![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-brightgreen)
+![Downloads](https://img.shields.io/github/downloads/c0rel5/MetroPlayer/total)
+
 A music player for Android inspired by Windows Phone's Metro design.
 
-**Latest version: 2.4** · [Download the APK](https://github.com/c0rel5/MetroPlayer/releases/latest) · [All releases](https://github.com/c0rel5/MetroPlayer/releases)
+[**Download the latest APK**](https://github.com/c0rel5/MetroPlayer/releases/latest)
 
 ## What's new in 2.4
 
