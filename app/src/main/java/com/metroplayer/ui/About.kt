@@ -48,7 +48,7 @@ import com.metroplayer.MetroApp
 import com.metroplayer.R
 import kotlinx.coroutines.delay
 
-private val AccentPalette = listOf(
+internal val AccentPalette = listOf(
     0xFFA4C400, 0xFF60A917, 0xFF008A00, 0xFF00ABA9, 0xFF1BA1E2,
     0xFF0050EF, 0xFF6A00FF, 0xFFAA00FF, 0xFFF472D0, 0xFFD80073,
     0xFFA20025, 0xFFE51400, 0xFFFA6800, 0xFFF0A30A, 0xFFE3C800,

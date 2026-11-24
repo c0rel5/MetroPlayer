@@ -17,12 +17,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -66,6 +68,8 @@ sealed interface Screen {
     data object AllTracks : Screen
     data object Settings : Screen
     data object About : Screen
+    data object Search : Screen
+    data object Recent : Screen
     data class ArtistTracks(val name: String) : Screen
     data class AlbumTracks(val albumId: Long) : Screen
     data class PlaylistTracks(val id: Long) : Screen
@@ -186,6 +190,7 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
     val shade2 = lerp(accent, Color.Black, 0.32f)
 
     val items = listOf(
+        MenuEntry("поиск") { push(Screen.Search) },
         MenuEntry("перемешать всё") { radio() },
         MenuEntry("обновить библиотеку") { scope.launch { repo.load() } },
         MenuEntry("настройки") { push(Screen.Settings) },
@@ -193,41 +198,58 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
     )
 
     Box(Modifier.fillMaxSize()) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val tile = (maxWidth - 48.dp - 6.dp) / 2
-            val wide = tile * 2 + 6.dp
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp)
-            ) {
-                MText("МОЯ КОЛЛЕКЦИЯ", 12, Modifier.padding(top = 24.dp), FontWeight.SemiBold, c.subtle, spacing = 2f)
-                MText("музыка", 54, Modifier.padding(top = 4.dp, bottom = 20.dp), lh = 1.1f)
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LiveTile(app, wide, tile) { push(Screen.NowPlaying) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CountTile(repo.artists.size, "исполнители", shade1, tile) { push(Screen.Artists) }
-                        CountTile(repo.albums.size, "альбомы", shade2, tile) { push(Screen.Albums) }
+        Column(Modifier.fillMaxSize()) {
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                val tile = (maxWidth - 48.dp - 6.dp) / 2
+                val wide = tile * 2 + 6.dp
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp)
+                ) {
+                    MText("МОЯ КОЛЛЕКЦИЯ", 12, Modifier.padding(top = 24.dp), FontWeight.SemiBold, c.subtle, spacing = 2f)
+                    MText("музыка", 54, Modifier.padding(top = 4.dp, bottom = 12.dp), lh = 1.1f)
+                    if (!repo.loaded) {
+                        MetroProgressDots(Modifier.padding(bottom = 12.dp))
+                    } else if (repo.tracks.isEmpty()) {
+                        MText(
+                            "На устройстве не найдено музыки. Добавьте файлы и выберите «обновить библиотеку» в меню «···».",
+                            16, Modifier.padding(bottom = 12.dp), color = c.subtle
+                        )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CountTile(store.playlists.size, "плейлисты", shade2, tile) { push(Screen.Playlists) }
-                        CountTile(store.favorites.size, "избранное", shade1, tile) { push(Screen.Favorites) }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        LiveTile(app, wide, tile) { push(Screen.NowPlaying) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            CountTile(repo.artists.size, "исполнители", shade1, tile) { push(Screen.Artists) }
+                            CountTile(repo.albums.size, "альбомы", shade2, tile) { push(Screen.Albums) }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            CountTile(store.playlists.size, "плейлисты", shade2, tile) { push(Screen.Playlists) }
+                            CountTile(store.favorites.size, "избранное", shade1, tile) { push(Screen.Favorites) }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            CountTile(store.history.size, "недавние", shade1, tile) { push(Screen.Recent) }
+                            Tile(shade2, tile, tile, "радио", { radio() }) {
+                                MetroIcon(Ic.RADIO, 44.dp, Color.White)
+                            }
+                        }
+                        Tile(shade1, wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }) {
+                            MetroIcon(Ic.NOTE, 44.dp, Color.White)
+                        }
                     }
-                    Tile(shade1, wide, tile, "радио", { radio() }) {
-                        MetroIcon(Ic.RADIO, 44.dp, Color.White)
-                    }
-                    Tile(shade2, wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }) {
-                        MetroIcon(Ic.NOTE, 44.dp, Color.White)
-                    }
+                    Spacer(Modifier.height(24.dp))
                 }
-                Spacer(Modifier.height(96.dp))
             }
+            MiniPlayerBar(
+                app,
+                onOpen = { push(Screen.NowPlaying) },
+                onMore = { menu = true },
+                leftExtra = {
+                    MetroCircleButton(42.dp, Ic.SEARCH, 22.dp, Color.White, "поиск") { push(Screen.Search) }
+                }
+            )
         }
-        Ellipsis(
-            c.subtle, { menu = true },
-            Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 16.dp, bottom = 8.dp)
-        )
         MetroMenu(menu, items) { menu = false }
     }
 }
@@ -242,25 +264,28 @@ private fun ListFrame(
     push: (Screen) -> Unit,
     menuItems: List<MenuEntry>,
     leftExtra: (@Composable RowScope.() -> Unit)? = null,
+    subtitle: String? = null,
     body: @Composable ColumnScope.() -> Unit
 ) {
     val c = Metro.colors
-    val st = app.player.state
     var menu by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             Column(Modifier.padding(horizontal = 24.dp).padding(top = 24.dp, bottom = 12.dp)) {
                 MText(caption, 12, color = c.subtle, weight = FontWeight.SemiBold, spacing = 2f)
                 MText(title, 46, Modifier.padding(top = 4.dp), lh = 1.1f, maxLines = 1)
+                if (subtitle != null) MText(subtitle, 14, Modifier.padding(top = 2.dp), color = c.subtle, maxLines = 1)
             }
             Column(Modifier.weight(1f).fillMaxWidth()) { body() }
-            MetroBottomBar(onMore = { menu = true }, onMid = { push(Screen.NowPlaying) }) {
-                if (leftExtra != null) leftExtra(this)
-                if (st.current != null) PlayerButtons(app)
-            }
+            MiniPlayerBar(app, onOpen = { push(Screen.NowPlaying) }, onMore = { menu = true }, leftExtra = leftExtra)
         }
         MetroMenu(menu, menuItems) { menu = false }
     }
+}
+
+private fun fmtTotal(ms: Long): String {
+    val min = ms / 60_000
+    return if (min >= 60) "${min / 60} ч ${min % 60} мин" else "$min мин"
 }
 
 @Composable
@@ -270,10 +295,8 @@ fun ArtistsScreen(app: MetroApp, push: (Screen) -> Unit) {
         if (artists.isEmpty()) {
             EmptyHint("музыка не найдена")
         } else {
-            LazyColumn(Modifier.fillMaxSize()) {
-                itemsIndexed(artists) { _, a ->
-                    TrackRow(a.name, plural(a.count, "трек", "трека", "треков"), false, { push(Screen.ArtistTracks(a.name)) })
-                }
+            JumpLazyList(artists, { it.name }) { _, a ->
+                TrackRow(a.name, plural(a.count, "трек", "трека", "треков"), false, { push(Screen.ArtistTracks(a.name)) })
             }
         }
     }
@@ -286,15 +309,13 @@ fun AlbumsScreen(app: MetroApp, push: (Screen) -> Unit) {
         if (albums.isEmpty()) {
             EmptyHint("музыка не найдена")
         } else {
-            LazyColumn(Modifier.fillMaxSize()) {
-                itemsIndexed(albums) { _, a ->
-                    TrackRow(
-                        a.name,
-                        "${a.artist} · ${plural(a.count, "трек", "трека", "треков")}",
-                        false,
-                        { push(Screen.AlbumTracks(a.id)) }
-                    )
-                }
+            JumpLazyList(albums, { it.name }) { _, a ->
+                TrackRow(
+                    a.name,
+                    "${a.artist} · ${plural(a.count, "трек", "трека", "треков")}",
+                    false,
+                    { push(Screen.AlbumTracks(a.id)) }
+                )
             }
         }
     }
@@ -306,7 +327,7 @@ fun PlaylistsScreen(app: MetroApp, push: (Screen) -> Unit, onNewPlaylist: () -> 
     ListFrame(
         app, "МУЗЫКА", "плейлисты", push,
         listOf(MenuEntry("новый плейлист") { onNewPlaylist() }, MenuEntry("настройки") { push(Screen.Settings) }),
-        leftExtra = { MetroCircleButton(44.dp, Ic.PLUS, 24.dp, Color.White) { onNewPlaylist() } }
+        leftExtra = { MetroCircleButton(42.dp, Ic.PLUS, 22.dp, Color.White, "новый плейлист") { onNewPlaylist() } }
     ) {
         if (playlists.isEmpty()) {
             EmptyHint("нажмите «+», чтобы создать плейлист")
@@ -392,7 +413,8 @@ fun TrackListScreen(
     push: (Screen) -> Unit,
     pop: () -> Unit,
     onAddToPlaylist: (Long) -> Unit,
-    playlistId: Long? = null
+    playlistId: Long? = null,
+    alphabetical: Boolean = false
 ) {
     val st = app.player.state
     val store = app.store
@@ -450,28 +472,165 @@ fun TrackListScreen(
                 store.toggleFavorite(sel.id)
             })
             add(MenuEntry("играть следующим") { app.player.playNext(sel) })
+            add(MenuEntry("в конец очереди") { app.player.addToQueue(sel) })
             add(MenuEntry("в плейлист…") { onAddToPlaylist(sel.id) })
+            add(MenuEntry("к исполнителю") { push(Screen.ArtistTracks(sel.artist)) })
+            add(MenuEntry("к альбому") { push(Screen.AlbumTracks(sel.albumId)) })
             if (playlistId != null) {
                 add(MenuEntry("убрать из плейлиста") { store.removeFromPlaylist(playlistId, sel.id) })
             }
         }
     }
 
+    val subtitle = if (allTracks.isEmpty()) {
+        null
+    } else {
+        "${plural(allTracks.size, "трек", "трека", "треков")} · ${fmtTotal(allTracks.sumOf { it.durationMs })}"
+    }
+
+    val rowFor: @Composable (Int, Track) -> Unit = { i, t ->
+        TrackRow(
+            title = t.title,
+            subtitle = "${t.artist} · ${fmt(t.durationMs)}",
+            highlighted = st.current?.id == t.id,
+            onClick = {
+                app.player.playTracks(tracks, i)
+                push(Screen.NowPlaying)
+            },
+            onLongClick = {
+                selected = t
+                trackMenu = true
+            },
+            onMore = {
+                selected = t
+                trackMenu = true
+            }
+        )
+    }
+
     Box(Modifier.fillMaxSize()) {
-        ListFrame(app, caption, title, push, menuItems) {
+        ListFrame(app, caption, title, push, menuItems, subtitle = subtitle) {
             if (searching) {
                 SearchBar(query, { query = it }) {
                     searching = false
                     query = ""
                 }
             }
+            if (tracks.isNotEmpty() && !searching) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    MetroTextButton("играть", Ic.PLAY, Modifier.weight(1f)) {
+                        app.player.playTracks(tracks, 0)
+                        push(Screen.NowPlaying)
+                    }
+                    MetroTextButton("перемешать", Ic.SHUFFLE, Modifier.weight(1f)) {
+                        app.player.playTracks(tracks.shuffled(), 0)
+                        push(Screen.NowPlaying)
+                    }
+                }
+            }
             if (formatCounts.size > 1) {
                 FormatChips(formatCounts.map { it.key to it.value }, allTracks.size, activeFormat) { formatFilter = it }
             }
             if (tracks.isEmpty()) {
-                EmptyHint("здесь пока пусто")
+                EmptyHint(if (searching && q.isNotEmpty()) "ничего не найдено" else "здесь пока пусто")
+            } else if (alphabetical) {
+                JumpLazyList(tracks, { it.title }, row = rowFor)
             } else {
                 LazyColumn(Modifier.fillMaxSize()) {
+                    itemsIndexed(tracks) { i, t -> rowFor(i, t) }
+                }
+            }
+        }
+        MetroMenu(trackMenu, trackItems, header = sel?.title) { trackMenu = false }
+    }
+}
+
+/* ═══════════════════ Глобальный поиск ═══════════════════ */
+
+@Composable
+fun SearchScreen(app: MetroApp, push: (Screen) -> Unit) {
+    val c = Metro.colors
+    val repo = app.repo
+    var query by remember { mutableStateOf("") }
+    val q = query.trim().lowercase()
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+
+    val artists = remember(q, repo.artists) {
+        if (q.isEmpty()) emptyList() else repo.artists.filter { it.name.lowercase().contains(q) }.take(5)
+    }
+    val albums = remember(q, repo.albums) {
+        if (q.isEmpty()) {
+            emptyList()
+        } else {
+            repo.albums.filter { it.name.lowercase().contains(q) || it.artist.lowercase().contains(q) }.take(5)
+        }
+    }
+    val tracks = remember(q, repo.tracks) {
+        if (q.isEmpty()) {
+            emptyList()
+        } else {
+            repo.tracks
+                .filter { it.title.lowercase().contains(q) || it.artist.lowercase().contains(q) || it.album.lowercase().contains(q) }
+                .sortedByDescending { it.title.lowercase().startsWith(q) }
+                .take(60)
+        }
+    }
+    val st = app.player.state
+
+    Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
+        Column(Modifier.padding(horizontal = 24.dp).padding(top = 24.dp, bottom = 12.dp)) {
+            MText("МУЗЫКА", 12, color = c.subtle, weight = FontWeight.SemiBold, spacing = 2f)
+            MText("поиск", 46, Modifier.padding(top = 4.dp), lh = 1.1f, maxLines = 1)
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(Modifier.weight(1f).skinBorder(2.dp, c.fg).padding(12.dp)) {
+                if (query.isEmpty()) MText("трек, исполнитель, альбом", 20, color = c.inactive, maxLines = 1)
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = TextStyle(color = c.fg, fontSize = 20.sp, fontFamily = MetroFont, fontWeight = FontWeight.Light),
+                    cursorBrush = SolidColor(c.fg),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus)
+                )
+            }
+            if (query.isNotEmpty()) {
+                MText(
+                    "×", 32,
+                    Modifier
+                        .padding(start = 14.dp)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { query = "" },
+                    color = c.fg
+                )
+            }
+        }
+        if (q.isEmpty()) {
+            EmptyHint("Введите название трека, исполнителя или альбома.")
+        } else if (artists.isEmpty() && albums.isEmpty() && tracks.isEmpty()) {
+            EmptyHint("ничего не найдено")
+        } else {
+            LazyColumn(Modifier.fillMaxSize()) {
+                if (artists.isNotEmpty()) {
+                    item { SectionLabel("исполнители") }
+                    items(artists) { a ->
+                        TrackRow(a.name, plural(a.count, "трек", "трека", "треков"), false, { push(Screen.ArtistTracks(a.name)) })
+                    }
+                }
+                if (albums.isNotEmpty()) {
+                    item { SectionLabel("альбомы") }
+                    items(albums) { a ->
+                        TrackRow(a.name, "${a.artist} · ${plural(a.count, "трек", "трека", "треков")}", false, { push(Screen.AlbumTracks(a.id)) })
+                    }
+                }
+                if (tracks.isNotEmpty()) {
+                    item { SectionLabel("треки") }
                     itemsIndexed(tracks) { i, t ->
                         TrackRow(
                             title = t.title,
@@ -480,17 +639,12 @@ fun TrackListScreen(
                             onClick = {
                                 app.player.playTracks(tracks, i)
                                 push(Screen.NowPlaying)
-                            },
-                            onLongClick = {
-                                selected = t
-                                trackMenu = true
                             }
                         )
                     }
                 }
             }
         }
-        MetroMenu(trackMenu, trackItems) { trackMenu = false }
     }
 }
 
@@ -510,92 +664,77 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
         MText("МУЗЫКА", 12, Modifier.padding(top = 24.dp), FontWeight.SemiBold, c.subtle, spacing = 2f)
         MText("настройки", 46, Modifier.padding(top = 4.dp, bottom = 16.dp), lh = 1.1f)
 
-        MText("стиль", 14, color = c.subtle)
-        Column(Modifier.padding(top = 6.dp, bottom = 24.dp)) {
-            listOf("Metro" to 0, "Windows 7" to 1, "Aero" to 2, "Material You" to 3).forEach { (label, id) ->
-                MText(
-                    label, 22,
-                    Modifier
-                        .padding(vertical = 3.dp)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                            store.chooseSkin(id)
-                            com.metroplayer.SkinIcons.apply(app, id)
-                        },
-                    color = if (store.skin == id) c.accent else c.inactive
-                )
-            }
+        MText("ВНЕШНИЙ ВИД", 12, Modifier.padding(bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+        OptionGroup(
+            "стиль",
+            listOf("Metro" to 0, "Windows 7" to 1, "Aero" to 2, "Material You" to 3),
+            store.skin,
+            Modifier.padding(bottom = 20.dp)
+        ) { id ->
+            store.chooseSkin(id)
+            com.metroplayer.SkinIcons.apply(app, id)
         }
-
-        MText("тема", 14, color = c.subtle)
-        Row(Modifier.padding(top = 6.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            listOf("тёмная" to 1, "светлая" to 2, "системная" to 0).forEach { (label, mode) ->
-                MText(
-                    label, 22,
-                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                        store.setThemeMode(mode)
-                    },
-                    color = if (store.themeMode == mode) c.accent else c.inactive
-                )
-            }
-        }
-
-        MText("текст песен", 14, color = c.subtle)
-        Row(Modifier.padding(top = 6.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            listOf("синхронно" to 0, "выделение" to 1).forEach { (label, mode) ->
-                MText(
-                    label, 22,
-                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                        store.chooseLyricsMode(mode)
-                    },
-                    color = if (store.lyricsMode == mode) c.accent else c.inactive
-                )
-            }
-        }
-
-        MText("автоматика", 14, color = c.subtle)
-        Column(Modifier.padding(top = 6.dp, bottom = 24.dp)) {
-            MText(
-                (if (store.autoLyrics) "вкл" else "выкл") + " · искать тексты автоматически", 22,
-                Modifier
-                    .padding(vertical = 3.dp)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                        store.chooseAutoLyrics(!store.autoLyrics)
-                    },
-                color = if (store.autoLyrics) c.accent else c.inactive
-            )
-            MText(
-                (if (store.lyricsInNotif) "вкл" else "выкл") + " · строка песни в мини-плеере", 22,
-                Modifier
-                    .padding(vertical = 3.dp)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                        store.chooseLyricsInNotif(!store.lyricsInNotif)
-                    },
-                color = if (store.lyricsInNotif) c.accent else c.inactive
-            )
-            MText(
-                "Строка песни заменяет исполнителя в уведомлении и на экране блокировки. Применится со следующей очереди.",
-                13, Modifier.padding(top = 4.dp), color = c.subtle
-            )
-        }
-
-        MText("экран «сейчас играет»", 14, color = c.subtle)
-        Row(Modifier.padding(top = 6.dp, bottom = 24.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            listOf("обложка" to 0, "текст" to 1).forEach { (label, mode) ->
-                MText(
-                    label, 22,
-                    Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                        store.chooseNowMode(mode)
-                    },
-                    color = if (store.nowMode == mode) c.accent else c.inactive
-                )
-            }
-        }
+        OptionGroup(
+            "тема",
+            listOf("тёмная" to 1, "светлая" to 2, "как в системе" to 0),
+            store.themeMode,
+            Modifier.padding(bottom = 20.dp)
+        ) { store.setThemeMode(it) }
 
         MText("цвет акцента", 14, color = c.subtle)
+        Column(Modifier.padding(top = 8.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            AccentPalette.chunked(6).forEach { rowColors ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    rowColors.forEach { argb ->
+                        val on = store.accent == argb
+                        Box(
+                            Modifier
+                                .size(44.dp)
+                                .metroPress(pressScale = 0.9f) { store.setAccent(argb) }
+                                .background(Color(argb))
+                                .then(if (on) Modifier.border(3.dp, c.fg) else Modifier)
+                        )
+                    }
+                }
+            }
+        }
         MText(
-            "изменить в «о приложении»", 22,
+            if (store.accent == 0) "по умолчанию для темы" else "сбросить на цвет по умолчанию", 16,
             Modifier
-                .padding(top = 6.dp)
+                .padding(bottom = 24.dp)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { store.setAccent(0) },
+            color = if (store.accent == 0) c.subtle else c.accent
+        )
+
+        MText("ВОСПРОИЗВЕДЕНИЕ", 12, Modifier.padding(bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+        OptionGroup(
+            "экран «сейчас играет»",
+            listOf("обложка и строка текста" to 0, "текст вместо обложки" to 1),
+            store.nowMode,
+            Modifier.padding(bottom = 20.dp)
+        ) { store.chooseNowMode(it) }
+
+        MText("ТЕКСТЫ ПЕСЕН", 12, Modifier.padding(bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+        OptionGroup(
+            "режим текста",
+            listOf("синхронно — автопрокрутка" to 0, "выделение — можно копировать" to 1),
+            store.lyricsMode,
+            Modifier.padding(bottom = 12.dp)
+        ) { store.chooseLyricsMode(it) }
+        SettingToggle(
+            "искать тексты автоматически", "lrclib.net — для текущего и следующего трека",
+            store.autoLyrics
+        ) { store.chooseAutoLyrics(!store.autoLyrics) }
+        SettingToggle(
+            "строка песни в мини-плеере",
+            "Заменяет исполнителя в уведомлении и на экране блокировки. Применится со следующей очереди.",
+            store.lyricsInNotif
+        ) { store.chooseLyricsInNotif(!store.lyricsInNotif) }
+
+        MText(
+            "о приложении", 22,
+            Modifier
+                .padding(top = 20.dp)
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { push(Screen.About) },
             color = c.accent
         )

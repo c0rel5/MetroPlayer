@@ -196,6 +196,19 @@ class PlayerController(
         }
     }
 
+    /** Добавить трек в конец очереди. */
+    fun addToQueue(track: Track) = withController { c ->
+        c.addMediaItem(track.toMediaItem(store.lyricsInNotif))
+        if (c.mediaItemCount == 1) {
+            c.prepare()
+            c.play()
+        }
+    }
+
+    fun removeFromQueue(index: Int) = withController { c ->
+        if (index in 0 until c.mediaItemCount) c.removeMediaItem(index)
+    }
+
     fun toggleShuffle() = withController { it.shuffleModeEnabled = !it.shuffleModeEnabled }
 
     fun cycleRepeat() = withController {

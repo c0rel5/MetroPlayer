@@ -161,14 +161,19 @@ private fun ScreenHost(
         Screen.Playlists -> PlaylistsScreen(app, push, onNewPlaylist)
         Screen.Favorites -> TrackListScreen(
             app, "МУЗЫКА", "избранное",
-            repo.tracks.filter { it.id in store.favorites }, push, pop, onAdd
+            repo.tracks.filter { it.id in store.favorites }, push, pop, onAdd, alphabetical = true
         )
-        Screen.AllTracks -> TrackListScreen(app, "МУЗЫКА", "все треки", repo.tracks, push, pop, onAdd)
+        Screen.AllTracks -> TrackListScreen(app, "МУЗЫКА", "все треки", repo.tracks, push, pop, onAdd, alphabetical = true)
         Screen.Settings -> SettingsScreen(app, push)
         Screen.About -> AboutScreen(app, push)
+        Screen.Search -> SearchScreen(app, push)
+        Screen.Recent -> TrackListScreen(
+            app, "МУЗЫКА", "недавние",
+            store.history.mapNotNull { repo.find(it) }, push, pop, onAdd
+        )
         is Screen.ArtistTracks -> TrackListScreen(
             app, "ИСПОЛНИТЕЛЬ", screen.name,
-            repo.tracks.filter { it.artist == screen.name }, push, pop, onAdd
+            repo.tracks.filter { it.artist == screen.name }, push, pop, onAdd, alphabetical = true
         )
         is Screen.AlbumTracks -> {
             val album = repo.albums.firstOrNull { it.id == screen.albumId }
