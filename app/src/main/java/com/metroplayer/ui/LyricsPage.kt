@@ -241,8 +241,17 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
             ) {
                 itemsIndexed(lines) { i, l ->
                     val on = i == active
-                    if (on && l.text.isEmpty()) {
-                        NoteGif(96.dp, Modifier.padding(vertical = 4.dp))
+                    if (l.text.isEmpty()) {
+                        // проигрыш: гифка вместо ноты и в активной, и в соседних строках
+                        NoteGif(
+                            if (on) 96.dp else 44.dp,
+                            Modifier
+                                .padding(vertical = 4.dp)
+                                .graphicsLayer { alpha = if (on) 1f else 0.5f }
+                                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                                    app.player.seekTo((l.timeMs - shift).coerceAtLeast(0L))
+                                }
+                        )
                     } else {
                         // цвет и размер строки меняются плавно
                         val classic = app.store.lyricsAnim == 1
@@ -270,7 +279,7 @@ fun LyricsPage(app: MetroApp, st: PlayerState, pos: Long) {
                         )
                         val lineAlpha by animateFloatAsState(targetAlpha, tween(450), label = "lyricAlpha")
                         RevealMText(
-                            l.text.ifEmpty { "♪" }, 26,
+                            l.text, 26,
                             Modifier
                                 .fillMaxWidth()
                                 .graphicsLayer {

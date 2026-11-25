@@ -1,9 +1,13 @@
-## Metro Player 2.5
+## Metro Player 2.6
 
 **Install over your current version, no need to uninstall.** Every build is signed with the same key.
 
-### New in 2.5
-- **Last.fm scrobbling (beta).** Settings → *Last.fm*: sign in with your own API key, and MetroPlayer sends "now playing" and scrobbles each track after half of it (or 4 minutes) is played. Plays made offline are queued and sent later. This feature is new and marked as beta, so it may be unstable. Please report any problems.
+### New in 2.6
+- **Equalizer.** Settings → *Equalizer*: five bands with sliders and twelve ready-made presets (Bass, Treble, V-shape, Rock, Pop, Hip-hop, Electronic, Jazz, Classical, Acoustic, Vocal, Flat). It works on all music in the app.
+
+### Fixed in 2.6
+- The lyrics line under the player buttons no longer jumps or flickers: it has a fixed height and fades smoothly from line to line.
+- The custom/default GIF is now shown instead of the "♪" note everywhere in the lyrics, including the neighbouring lines and the Lyrics tab.
 
 ### 2.4
 > Exactly 25 days ago, on this very day, the first version of Metro Player was released. In those 25 days the app has grown into something that has given me an incredible experience.

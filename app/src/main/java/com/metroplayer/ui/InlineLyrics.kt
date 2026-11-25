@@ -124,24 +124,41 @@ fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit, classic: Boolean
             !lyrics.synced -> MText("текст песни · открыть", 16, color = c.subtle)
             else -> {
                 val i = activeIndex(lyrics, pos)
-                val cur = lyrics.lines.getOrNull(i)?.text.orEmpty()
-                val next = lyrics.lines.getOrNull(i + 1)?.text.orEmpty()
-                // при смене строки новая плавно выезжает снизу, старая уходит вверх
+                // Анимация привязана к номеру строки, а не к её тексту; блок всегда одной высоты,
+                // поэтому ничего не прыгает и не дёргает кнопки выше. Новая строка просто проявляется.
                 AnimatedContent(
-                    targetState = cur to next,
+                    targetState = i,
                     modifier = Modifier.fillMaxWidth().height(88.dp),
                     contentAlignment = Alignment.Center,
                     transitionSpec = {
-                        (slideInVertically(tween(380)) { it / 2 } + fadeIn(tween(380))) togetherWith
-                            (slideOutVertically(tween(380)) { -it / 2 } + fadeOut(tween(220)))
+                        if (classic) {
+                            (slideInVertically(tween(380)) { it / 2 } + fadeIn(tween(380))) togetherWith
+                                (slideOutVertically(tween(380)) { -it / 2 } + fadeOut(tween(220)))
+                        } else {
+                            fadeIn(tween(300, delayMillis = 90)) togetherWith fadeOut(tween(160))
+                        }
                     },
                     label = "lyricStrip"
-                ) { (curText, nextText) ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        if (curText.isEmpty()) NoteGif(48.dp)
-                        else if (classic) MText(curText, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
-                        else RevealMText(curText, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
-                        MText(nextText, 16, Modifier.fillMaxWidth().padding(top = 4.dp), color = c.subtle, maxLines = 1, align = TextAlign.Center)
+                ) { idx ->
+                    val curLine = lyrics.lines.getOrNull(idx)
+                    val nextLine = lyrics.lines.getOrNull(idx + 1)
+                    Column(
+                        Modifier.fillMaxWidth().height(88.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        when {
+                            curLine == null -> Spacer(Modifier.height(1.dp))
+                            curLine.text.isEmpty() -> NoteGif(48.dp)
+                            else -> MText(curLine.text, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
+                        }
+                        if (nextLine != null) {
+                            if (nextLine.text.isEmpty()) {
+                                NoteGif(24.dp, Modifier.padding(top = 4.dp))
+                            } else {
+                                MText(nextLine.text, 16, Modifier.fillMaxWidth().padding(top = 4.dp), color = c.subtle, maxLines = 1, align = TextAlign.Center)
+                            }
+                        }
                     }
                 }
             }
@@ -234,13 +251,20 @@ private fun GlideLyrics(lyrics: Lyrics, pos: Long) {
                 }
                 val lineScale by animateFloatAsState(targetScale, spring(dampingRatio = 0.7f, stiffness = 200f), label = "lineScale")
                 val lineAlpha by animateFloatAsState(targetAlpha, tween(500), label = "lineAlpha")
-                if (on && line.text.isEmpty()) {
+                if (line.text.isEmpty()) {
                     Box(Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
-                        NoteGif(72.dp)
+                        NoteGif(
+                            if (on) 72.dp else 40.dp,
+                            Modifier.graphicsLayer {
+                                scaleX = lineScale
+                                scaleY = lineScale
+                                alpha = lineAlpha
+                            }
+                        )
                     }
                 } else {
                     RevealMText(
-                        line.text.ifEmpty { "♪" }, 22,
+                        line.text, 22,
                         Modifier
                             .fillMaxWidth()
                             .padding(vertical = 6.dp)
@@ -280,12 +304,12 @@ private fun ClassicLyrics(lyrics: Lyrics, pos: Long) {
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             for (k in from until to) {
                 val on = k == i
-                if (on && lyrics.lines[k].text.isEmpty()) {
-                    NoteGif(72.dp, Modifier.padding(vertical = 5.dp))
+                if (lyrics.lines[k].text.isEmpty()) {
+                    NoteGif(if (on) 72.dp else 36.dp, Modifier.padding(vertical = 5.dp))
                     continue
                 }
                 MText(
-                    lyrics.lines[k].text.ifEmpty { "♪" }, if (on) 24 else 18,
+                    lyrics.lines[k].text, if (on) 24 else 18,
                     Modifier.fillMaxWidth().padding(vertical = 5.dp),
                     weight = if (on) FontWeight.SemiBold else FontWeight.Light,
                     color = if (on) c.accent else c.inactive,

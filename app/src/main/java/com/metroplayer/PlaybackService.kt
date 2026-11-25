@@ -1,6 +1,7 @@
 package com.metroplayer
 
 import android.app.PendingIntent
+import android.media.audiofx.Equalizer
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -43,6 +44,10 @@ class PlaybackService : MediaSessionService() {
     private var lyricsVersion = -1
     private var parsed: Lyrics? = null
     private var shownText: String? = null
+
+    // эквалайзер на всю музыку: цепляется к аудиосессии плеера
+    private var eq: Equalizer? = null
+    private var eqSession = 0
 
     private val sessionCallback = object : MediaSession.Callback {
         override fun onConnect(
@@ -121,6 +126,14 @@ class PlaybackService : MediaSessionService() {
             }
         })
 
+        player.addListener(object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) = rebuildEq(audioSessionId)
+        })
+        rebuildEq(player.audioSessionId)
+        scope.launch {
+            snapshotFlow { metroApp.store.eqOn to metroApp.store.eqGains }.collect { applyEq() }
+        }
+
         // «избранное» можно менять и из самого приложения — обновляем сердечко в мини-плеере
         scope.launch {
             snapshotFlow { metroApp.store.favorites }.collect { refreshLayout() }
@@ -135,6 +148,51 @@ class PlaybackService : MediaSessionService() {
                 skin = { metroApp.store.skin }
             )
         )
+    }
+
+    private fun rebuildEq(sessionId: Int) {
+        if (sessionId == C.AUDIO_SESSION_ID_UNSET || sessionId == 0) return
+        if (sessionId == eqSession && eq != null) return
+        try {
+            eq?.release()
+        } catch (e: Exception) {
+            // уже освобождён
+        }
+        eq = null
+        eqSession = sessionId
+        try {
+            eq = Equalizer(0, sessionId)
+        } catch (e: Exception) {
+            eq = null   // на некоторых устройствах эквалайзера нет
+        }
+        applyEq()
+    }
+
+    /** Пять ползунков из настроек раскладываются на реальные полосы устройства (обычно их пять, иногда больше или меньше). */
+    private fun applyEq() {
+        val e = eq ?: return
+        try {
+            val store = metroApp.store
+            if (!store.eqOn) {
+                e.enabled = false
+                return
+            }
+            val gains = store.eqGains
+            val bands = e.numberOfBands.toInt()
+            val min = e.bandLevelRange[0].toInt()
+            val max = e.bandLevelRange[1].toInt()
+            for (b in 0 until bands) {
+                val pos = if (bands == 1) 0f else b.toFloat() / (bands - 1) * (gains.size - 1)
+                val lo = pos.toInt().coerceIn(0, gains.size - 1)
+                val hi = (lo + 1).coerceAtMost(gains.size - 1)
+                val f = pos - lo
+                val db = gains[lo] * (1f - f) + gains[hi] * f
+                e.setBandLevel(b.toShort(), (db * 100f).toInt().coerceIn(min, max).toShort())
+            }
+            e.enabled = true
+        } catch (ex: Exception) {
+            // эффект мог быть отнят системой — при следующей смене сессии создадим заново
+        }
     }
 
     private fun buildLayout(): List<CommandButton> {
@@ -222,6 +280,12 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         handler.removeCallbacks(tick)
         scope.cancel()
+        try {
+            eq?.release()
+        } catch (e: Exception) {
+            // ничего
+        }
+        eq = null
         session?.run {
             player.release()
             release()

@@ -49,63 +49,47 @@ class Store(context: Context) {
     var nowMode by mutableIntStateOf(prefs.getInt("nowMode", 0))
         private set
 
-    // Last.fm: ключ приложения, секрет и сессия (пароль не хранится — нужен только при входе)
-    var lastfmKey by mutableStateOf(prefs.getString("lfKey", "").orEmpty())
+    // Эквалайзер: включён ли, выбранный пресет и усиление пяти полос в дБ
+    var eqOn by mutableStateOf(prefs.getBoolean("eqOn", false))
         private set
-    var lastfmSecret by mutableStateOf(prefs.getString("lfSecret", "").orEmpty())
+    var eqPreset by mutableStateOf(prefs.getString("eqPreset", "flat").orEmpty())
         private set
-    var lastfmSession by mutableStateOf(prefs.getString("lfSession", "").orEmpty())
-        private set
-    var lastfmUser by mutableStateOf(prefs.getString("lfUser", "").orEmpty())
-        private set
-    var lastfmOn by mutableStateOf(prefs.getBoolean("lfOn", true))
+    var eqGains by mutableStateOf(readEqGains())
         private set
 
-    val lastfmReady: Boolean
-        get() = lastfmOn && lastfmSession.isNotEmpty() && lastfmKey.isNotEmpty() && lastfmSecret.isNotEmpty()
+    private fun readEqGains(): List<Float> {
+        val parsed = prefs.getString("eqGains", null)?.split(",")?.mapNotNull { it.toFloatOrNull() }
+        return if (parsed != null && parsed.size == EqPresets.labels.size) parsed else EqPresets.all.first().gains
+    }
 
-    fun saveLastfm(key: String, secret: String, session: String, user: String) {
-        lastfmKey = key
-        lastfmSecret = secret
-        lastfmSession = session
-        lastfmUser = user
+    private fun saveEq() {
         prefs.edit()
-            .putString("lfKey", key).putString("lfSecret", secret)
-            .putString("lfSession", session).putString("lfUser", user)
+            .putBoolean("eqOn", eqOn)
+            .putString("eqPreset", eqPreset)
+            .putString("eqGains", eqGains.joinToString(","))
             .apply()
     }
 
-    fun logoutLastfm() {
-        lastfmSession = ""
-        lastfmUser = ""
-        prefs.edit().remove("lfSession").remove("lfUser").remove("lfQueue").apply()
+    fun chooseEqOn(v: Boolean) {
+        eqOn = v
+        saveEq()
     }
 
-    fun chooseLastfmOn(v: Boolean) {
-        lastfmOn = v
-        prefs.edit().putBoolean("lfOn", v).apply()
+    fun chooseEqPreset(id: String) {
+        val p = EqPresets.byId(id) ?: return
+        eqPreset = id
+        eqGains = p.gains
+        saveEq()
     }
 
-    /** Очередь прослушиваний, которые не удалось отправить (нет сети) — уйдут при первой возможности. */
-    fun readScrobbleQueue(): List<Scrobble> {
-        val raw = prefs.getString("lfQueue", null) ?: return emptyList()
-        return try {
-            val arr = JSONArray(raw)
-            (0 until arr.length()).map {
-                val o = arr.getJSONObject(it)
-                Scrobble(o.getString("a"), o.getString("t"), o.optString("l"), o.optInt("d"), o.getLong("s"))
-            }
-        } catch (e: Exception) {
-            emptyList()
-        }
-    }
-
-    fun writeScrobbleQueue(list: List<Scrobble>) {
-        val arr = JSONArray()
-        list.forEach {
-            arr.put(JSONObject().put("a", it.artist).put("t", it.title).put("l", it.album).put("d", it.durationSec).put("s", it.timestamp))
-        }
-        prefs.edit().putString("lfQueue", arr.toString()).apply()
+    /** Ручная правка одной полосы: пресет становится «своим». */
+    fun setEqGain(band: Int, db: Float) {
+        if (band !in eqGains.indices) return
+        val next = eqGains.toMutableList()
+        next[band] = db.coerceIn(-EqPresets.MAX_DB, EqPresets.MAX_DB)
+        eqGains = next
+        eqPreset = "custom"
+        saveEq()
     }
 
     // Анимация текста песни: 0 — новая (плывёт, слова загораются), 1 — старая (слайд окна строк)
