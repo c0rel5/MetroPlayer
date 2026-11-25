@@ -250,7 +250,7 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
                         }
                     }
                     Tile(shade1, wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }, 7) {
-                        NoteGif(48.dp)
+                        MetroIcon(Ic.NOTE, 44.dp, Color.White)
                     }
                 }
                 Spacer(Modifier.height(96.dp))

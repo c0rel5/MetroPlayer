@@ -1,8 +1,11 @@
-## Metro Player 2.6.1
+## Metro Player 2.6.2
 
 **Install over your current version, no need to uninstall.** Every build is signed with the same key.
 
-### Fixed in 2.6.1
+### Fixed in 2.6.2
+- The "all tracks" tile shows the normal note icon again. The GIF is used only instead of the "♪" note in the lyrics (intros, instrumental breaks), not in buttons or menus.
+
+### 2.6.1 · Fixed
 - **Now Playing:** the lyrics line at the bottom no longer overlaps the buttons on smaller screens. The cover now takes the remaining space and the lyrics line has its own fixed area.
 - **Fast scrolling:** long track lists scroll smoother, because each row now does much less work.
 - **GIF instead of the note** is now also shown during the intro, long instrumental gaps and at the end of a song (not only on empty lyric lines), and on the "all tracks" tile.
