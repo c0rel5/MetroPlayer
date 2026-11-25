@@ -193,7 +193,6 @@ private fun NowPage(
     var scrub by remember { mutableStateOf<Long?>(null) }
     val fav = t != null && app.store.isFavorite(t.id)
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val cover = (maxHeight - 330.dp).coerceIn(140.dp, maxWidth - 48.dp)
         Column(
             Modifier
                 .fillMaxSize()
@@ -201,10 +200,14 @@ private fun NowPage(
                 .padding(horizontal = 24.dp)
         ) {
             Spacer(Modifier.height(4.dp))
+            // Обложка занимает всё свободное место между шапкой и кнопками (всегда квадрат),
+            // поэтому строка текста внизу больше не налезает на кнопки на маленьких экранах.
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val side = if (maxWidth < maxHeight) maxWidth else maxHeight
             // Тап по обложке: карточка переворачивается вокруг вертикальной оси, и на обратной стороне — текст песни
             AnimatedContent(
                 targetState = showLyrics,
-                modifier = Modifier.size(cover).align(Alignment.CenterHorizontally),
+                modifier = Modifier.size(side),
                 transitionSpec = { fadeIn(tween(160, delayMillis = 150)) togetherWith fadeOut(tween(120)) },
                 label = "coverFlip"
             ) { lyricsOn ->
@@ -235,6 +238,7 @@ private fun NowPage(
                         flip.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { toggleView() }
                     )
                 }
+            }
             }
             // при смене трека название и исполнитель «уезжают» влево, новые приезжают справа
             AnimatedContent(
@@ -293,7 +297,7 @@ private fun NowPage(
                 }
                 Box(Modifier.size(52.dp), contentAlignment = Alignment.Center) { Ellipsis(c.subtle, onMore) }
             }
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Box(Modifier.fillMaxWidth().height(92.dp), contentAlignment = Alignment.Center) {
                 if (!showLyrics) LyricsStrip(lyrics, lyricsPos, onOpenLyrics, classic = app.store.lyricsAnim == 1)
             }
         }

@@ -1,6 +1,7 @@
 package com.metroplayer.ui
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -107,6 +108,19 @@ fun RevealMText(
 private fun activeIndex(l: Lyrics, posMs: Long): Int =
     if (l.synced) l.lines.indexOfLast { it.timeMs <= posMs } else -1
 
+/**
+ * Идёт ли сейчас проигрыш: вступление до первой строки, строка без слов, долгая пауза после строки
+ * или конец песни. В это время вместо текста показывается гифка.
+ */
+private fun inBreak(l: Lyrics, i: Int, posMs: Long): Boolean {
+    if (!l.synced || l.lines.isEmpty()) return false
+    if (i < 0) return true
+    val cur = l.lines[i]
+    if (cur.text.isEmpty()) return true
+    val next = l.lines.getOrNull(i + 1) ?: return posMs - cur.timeMs > 12_000L
+    return next.timeMs - cur.timeMs > 14_000L && posMs - cur.timeMs > 8_000L
+}
+
 /** Вариант 1: две строки под кнопками — текущая и следующая. Тап открывает вкладку «текст». */
 @Composable
 fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit, classic: Boolean = false) {
@@ -115,7 +129,7 @@ fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit, classic: Boolean
         Modifier
             .fillMaxWidth()
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onOpen)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -124,11 +138,12 @@ fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit, classic: Boolean
             !lyrics.synced -> MText("текст песни · открыть", 16, color = c.subtle)
             else -> {
                 val i = activeIndex(lyrics, pos)
+                val brk = inBreak(lyrics, i, pos)
                 // Анимация привязана к номеру строки, а не к её тексту; блок всегда одной высоты,
                 // поэтому ничего не прыгает и не дёргает кнопки выше. Новая строка просто проявляется.
                 AnimatedContent(
-                    targetState = i,
-                    modifier = Modifier.fillMaxWidth().height(88.dp),
+                    targetState = i to brk,
+                    modifier = Modifier.fillMaxWidth().height(84.dp),
                     contentAlignment = Alignment.Center,
                     transitionSpec = {
                         if (classic) {
@@ -139,17 +154,17 @@ fun LyricsStrip(lyrics: Lyrics?, pos: Long, onOpen: () -> Unit, classic: Boolean
                         }
                     },
                     label = "lyricStrip"
-                ) { idx ->
+                ) { (idx, isBreak) ->
                     val curLine = lyrics.lines.getOrNull(idx)
                     val nextLine = lyrics.lines.getOrNull(idx + 1)
                     Column(
-                        Modifier.fillMaxWidth().height(88.dp),
+                        Modifier.fillMaxWidth().height(84.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         when {
+                            isBreak -> NoteGif(48.dp)
                             curLine == null -> Spacer(Modifier.height(1.dp))
-                            curLine.text.isEmpty() -> NoteGif(48.dp)
                             else -> MText(curLine.text, 22, Modifier.fillMaxWidth(), color = c.accent, maxLines = 2, align = TextAlign.Center)
                         }
                         if (nextLine != null) {
@@ -206,9 +221,29 @@ fun LyricsCoverPanel(
     }
 }
 
-/** Новая анимация: строки плавно плывут к центру, слова активной строки загораются по очереди. */
+/** Оболочка: на вступлении и в долгих паузах текст бледнеет, а в центре появляется гифка. */
 @Composable
 private fun GlideLyrics(lyrics: Lyrics, pos: Long) {
+    val i = activeIndex(lyrics, pos)
+    val cur = lyrics.lines.getOrNull(i)
+    val virtual = inBreak(lyrics, i, pos) && (cur == null || cur.text.isNotEmpty())
+    val dim by animateFloatAsState(if (virtual) 0.12f else 1f, tween(350), label = "lyricDim")
+    Box(Modifier.fillMaxSize()) {
+        GlideList(lyrics, pos, Modifier.fillMaxSize().graphicsLayer { alpha = dim })
+        AnimatedVisibility(
+            visible = virtual,
+            modifier = Modifier.align(Alignment.Center),
+            enter = fadeIn(tween(300)),
+            exit = fadeOut(tween(200))
+        ) {
+            NoteGif(72.dp)
+        }
+    }
+}
+
+/** Новая анимация: строки плавно плывут к центру, слова активной строки загораются по очереди. */
+@Composable
+private fun GlideList(lyrics: Lyrics, pos: Long, modifier: Modifier) {
     val c = Metro.colors
     val iNow = activeIndex(lyrics, pos)
     val listState = rememberLazyListState()
@@ -226,7 +261,7 @@ private fun GlideLyrics(lyrics: Lyrics, pos: Long) {
         val center = (info.viewportStartOffset + info.viewportEndOffset) / 2f
         listState.animateScrollBy(item.offset + item.size / 2f - center, tween(600, easing = FastOutSlowInEasing))
     }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier) {
         val pad = maxHeight / 2
         LazyColumn(
             Modifier.fillMaxSize(),
@@ -287,6 +322,18 @@ private fun GlideLyrics(lyrics: Lyrics, pos: Long) {
 /** Старая анимация: окно из пяти строк целиком выезжает снизу при смене строки. */
 @Composable
 private fun ClassicLyrics(lyrics: Lyrics, pos: Long) {
+    val i = activeIndex(lyrics, pos)
+    val cur = lyrics.lines.getOrNull(i)
+    val virtual = inBreak(lyrics, i, pos) && (cur == null || cur.text.isNotEmpty())
+    if (virtual) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { NoteGif(72.dp) }
+    } else {
+        ClassicList(lyrics, pos)
+    }
+}
+
+@Composable
+private fun ClassicList(lyrics: Lyrics, pos: Long) {
     val c = Metro.colors
     val iNow = activeIndex(lyrics, pos)
     AnimatedContent(

@@ -1,11 +1,16 @@
-## Metro Player 2.6
+## Metro Player 2.6.1
 
 **Install over your current version, no need to uninstall.** Every build is signed with the same key.
 
-### New in 2.6
+### Fixed in 2.6.1
+- **Now Playing:** the lyrics line at the bottom no longer overlaps the buttons on smaller screens. The cover now takes the remaining space and the lyrics line has its own fixed area.
+- **Fast scrolling:** long track lists scroll smoother, because each row now does much less work.
+- **GIF instead of the note** is now also shown during the intro, long instrumental gaps and at the end of a song (not only on empty lyric lines), and on the "all tracks" tile.
+
+### 2.6 · New
 - **Equalizer.** Settings → *Equalizer*: five bands with sliders and twelve ready-made presets (Bass, Treble, V-shape, Rock, Pop, Hip-hop, Electronic, Jazz, Classical, Acoustic, Vocal, Flat). It works on all music in the app.
 
-### Fixed in 2.6
+### 2.6 · Fixed
 - The lyrics line under the player buttons no longer jumps or flickers: it has a fixed height and fades smoothly from line to line.
 - The custom/default GIF is now shown instead of the "♪" note everywhere in the lyrics, including the neighbouring lines and the Lyrics tab.
 

@@ -14,7 +14,7 @@ android {
         targetSdk = 35
         // versionCode растёт с каждой сборкой в GitHub Actions — новая версия ставится поверх старой
         versionCode = (System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 0) + 100
-        versionName = "2.6"
+        versionName = "2.6.1"
     }
 
     // Один и тот же ключ для всех сборок: без него каждая сборка в CI подписывается новым случайным

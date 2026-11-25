@@ -39,6 +39,8 @@ Every build is signed with the same key, so you can **install a new version over
 
 > **Requirements:** Android 8.0 (API 26) or newer.
 
+> **Heads-up:** Google services may flag the APK as a virus. Please check it on [VirusTotal](https://www.virustotal.com/) ¯\\\_(ツ)\_/¯
+
 ## 🧭 Screens
 
 - **Now Playing**: pivot *now playing · queue · history*, big square cover, round controls, progress bar with remaining time, and a lyrics line under the buttons (or lyrics instead of the cover).

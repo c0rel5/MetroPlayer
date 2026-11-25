@@ -72,6 +72,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -156,23 +157,39 @@ fun Modifier.metroPress(
     var pressed by remember { mutableStateOf(false) }
     var pos by remember { mutableStateOf(Offset.Zero) }
     var sz by remember { mutableStateOf(IntSize.Zero) }
-    val scale by animateFloatAsState(if (pressed) pressScale else 1f, tween(120), label = "press")
+    val pressK by animateFloatAsState(if (pressed) pressScale else 1f, tween(120), label = "press")
     val nx = if (sz.width > 0) (pos.x / sz.width - 0.5f) * 2f else 0f
     val ny = if (sz.height > 0) (pos.y / sz.height - 0.5f) * 2f else 0f
-    val ry by animateFloatAsState(if (pressed && tilt) nx * 10f else 0f, tween(120), label = "ry")
-    val rx by animateFloatAsState(if (pressed && tilt) -ny * 10f else 0f, tween(120), label = "rx")
+    // наклон нужен только плиткам (tilt = true); у строк списков эти анимации не создаются вовсе
+    val ry = if (tilt) animateFloatAsState(if (pressed) nx * 10f else 0f, tween(120), label = "ry").value else 0f
+    val rx = if (tilt) animateFloatAsState(if (pressed) -ny * 10f else 0f, tween(120), label = "rx").value else 0f
     val click by rememberUpdatedState(onClick)
     val longClick by rememberUpdatedState(onLongClick)
     val haptic = LocalHapticFeedback.current
-    return this
-        .onSizeChanged { sz = it }
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-            rotationX = rx
-            rotationY = ry
-            cameraDistance = 16f * density
+    // Для плиток — слой с наклоном. Для строк списков — лёгкое масштабирование при рисовании, без отдельного слоя
+    // на каждую строку: так список прокручивается плавнее.
+    val visual = if (tilt) {
+        Modifier
+            .onSizeChanged { sz = it }
+            .graphicsLayer {
+                scaleX = pressK
+                scaleY = pressK
+                rotationX = rx
+                rotationY = ry
+                cameraDistance = 16f * density
+            }
+    } else {
+        Modifier.drawWithContent {
+            val k = pressK
+            if (k == 1f) {
+                drawContent()
+            } else {
+                scale(k, k, center) { this@drawWithContent.drawContent() }
+            }
         }
+    }
+    return this
+        .then(visual)
         .pointerInput(onLongClick != null) {
             detectTapGestures(
                 onPress = { o ->
@@ -201,18 +218,24 @@ fun Modifier.metroPress(
  */
 @Composable
 fun Modifier.metroEnter(index: Int, stepMs: Int = 45, maxAnimated: Int = 14, tiltDeg: Float = 55f): Modifier {
-    val enabled = index in 0 until maxAnimated
-    // Строка «влетает» один раз. Раньше при прокрутке вверх первые строки списка пересоздавались
-    // и влетали заново (мигали). rememberSaveable переживает выход строки за экран внутри LazyColumn.
+    // Анимация нужна только первым строкам. Остальные при прокрутке не получают ни состояния, ни слоя —
+    // это убирает лаги при быстрой прокрутке длинных списков.
+    if (index !in 0 until maxAnimated) return this
+    // Строка «влетает» один раз; rememberSaveable переживает выход строки за экран внутри LazyColumn,
+    // поэтому при прокрутке назад первые строки не влетают заново.
     var played by rememberSaveable { mutableStateOf(false) }
-    val p = remember { Animatable(if (enabled && !played) 0f else 1f) }
+    var done by remember { mutableStateOf(played) }
+    val p = remember { Animatable(if (played) 1f else 0f) }
     LaunchedEffect(Unit) {
-        if (enabled && !played) {
+        if (!played) {
             delay(index * stepMs.toLong())
             p.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
         }
         played = true
+        done = true
     }
+    // когда анимация закончилась, отдельный слой строке больше не нужен
+    if (done) return this
     return this.graphicsLayer {
         val v = p.value
         alpha = (v * 1.6f).coerceAtMost(1f)
