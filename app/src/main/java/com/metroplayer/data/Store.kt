@@ -49,6 +49,65 @@ class Store(context: Context) {
     var nowMode by mutableIntStateOf(prefs.getInt("nowMode", 0))
         private set
 
+    // Last.fm: ключ приложения, секрет и сессия (пароль не хранится — нужен только при входе)
+    var lastfmKey by mutableStateOf(prefs.getString("lfKey", "").orEmpty())
+        private set
+    var lastfmSecret by mutableStateOf(prefs.getString("lfSecret", "").orEmpty())
+        private set
+    var lastfmSession by mutableStateOf(prefs.getString("lfSession", "").orEmpty())
+        private set
+    var lastfmUser by mutableStateOf(prefs.getString("lfUser", "").orEmpty())
+        private set
+    var lastfmOn by mutableStateOf(prefs.getBoolean("lfOn", true))
+        private set
+
+    val lastfmReady: Boolean
+        get() = lastfmOn && lastfmSession.isNotEmpty() && lastfmKey.isNotEmpty() && lastfmSecret.isNotEmpty()
+
+    fun saveLastfm(key: String, secret: String, session: String, user: String) {
+        lastfmKey = key
+        lastfmSecret = secret
+        lastfmSession = session
+        lastfmUser = user
+        prefs.edit()
+            .putString("lfKey", key).putString("lfSecret", secret)
+            .putString("lfSession", session).putString("lfUser", user)
+            .apply()
+    }
+
+    fun logoutLastfm() {
+        lastfmSession = ""
+        lastfmUser = ""
+        prefs.edit().remove("lfSession").remove("lfUser").remove("lfQueue").apply()
+    }
+
+    fun chooseLastfmOn(v: Boolean) {
+        lastfmOn = v
+        prefs.edit().putBoolean("lfOn", v).apply()
+    }
+
+    /** Очередь прослушиваний, которые не удалось отправить (нет сети) — уйдут при первой возможности. */
+    fun readScrobbleQueue(): List<Scrobble> {
+        val raw = prefs.getString("lfQueue", null) ?: return emptyList()
+        return try {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).map {
+                val o = arr.getJSONObject(it)
+                Scrobble(o.getString("a"), o.getString("t"), o.optString("l"), o.optInt("d"), o.getLong("s"))
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun writeScrobbleQueue(list: List<Scrobble>) {
+        val arr = JSONArray()
+        list.forEach {
+            arr.put(JSONObject().put("a", it.artist).put("t", it.title).put("l", it.album).put("d", it.durationSec).put("s", it.timestamp))
+        }
+        prefs.edit().putString("lfQueue", arr.toString()).apply()
+    }
+
     // Анимация текста песни: 0 — новая (плывёт, слова загораются), 1 — старая (слайд окна строк)
     var lyricsAnim by mutableIntStateOf(prefs.getInt("lyricsAnim", 0))
         private set

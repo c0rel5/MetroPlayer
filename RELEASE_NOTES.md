@@ -1,14 +1,17 @@
-## Metro Player 2.4
+## Metro Player 2.5
 
+**Install over your current version, no need to uninstall.** Every build is signed with the same key.
+
+### New in 2.5
+- **Last.fm scrobbling (beta).** Settings → *Last.fm*: sign in with your own API key, and MetroPlayer sends "now playing" and scrobbles each track after half of it (or 4 minutes) is played. Plays made offline are queued and sent later. This feature is new and marked as beta, so it may be unstable. Please report any problems.
+
+### 2.4
 > Exactly 25 days ago, on this very day, the first version of Metro Player was released. In those 25 days the app has grown into something that has given me an incredible experience.
 >
 > I am sincerely proud of my project and of the community.
 >
 > From today, the MetroPlayer source code is fully open. I hope this decision will be the start of new projects.
 
-**Install over your current version, no need to uninstall.** Every build is signed with the same key.
-
-### New in 2.4
 - **Two lyric animations to choose from.** Settings → *Lyrics* → *text animation*: the new one (lines glide to the center, words light up one by one) or the classic one (the block of lines slides in).
 
 ### Also new since 2.1

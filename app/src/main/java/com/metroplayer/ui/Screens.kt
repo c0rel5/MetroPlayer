@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -49,6 +50,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -56,6 +60,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.metroplayer.MetroApp
+import com.metroplayer.data.LastFm
 import com.metroplayer.data.Track
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -657,6 +662,12 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
     val c = Metro.colors
     val store = app.store
     val gifScope = rememberCoroutineScope()
+    var lfKey by remember { mutableStateOf(store.lastfmKey) }
+    var lfSecret by remember { mutableStateOf(store.lastfmSecret) }
+    var lfUser by remember { mutableStateOf(store.lastfmUser) }
+    var lfPass by remember { mutableStateOf("") }
+    var lfBusy by remember { mutableStateOf(false) }
+    var lfMsg by remember { mutableStateOf<String?>(null) }
     var gifMsg by remember { mutableStateOf<String?>(null) }
     val gifPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -775,6 +786,58 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
             "Заменяет исполнителя в уведомлении и на экране блокировки. Применится со следующей очереди.",
             store.lyricsInNotif
         ) { store.chooseLyricsInNotif(!store.lyricsInNotif) }
+
+        Row(Modifier.padding(top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            MText("LAST.FM", 12, Modifier, FontWeight.SemiBold, c.accent, spacing = 2f)
+            MText(
+                "БЕТА", 10,
+                Modifier.padding(start = 10.dp).skinBorder(1.dp, c.accent).padding(horizontal = 6.dp, vertical = 2.dp),
+                FontWeight.SemiBold, c.accent, spacing = 1f
+            )
+        }
+        MText(
+            "Функция тестовая: может работать нестабильно. Если что-то не так, сообщите об ошибке.",
+            14, Modifier.padding(bottom = 10.dp), color = c.subtle
+        )
+        if (store.lastfmSession.isNotEmpty()) {
+            MText("вы вошли как ${store.lastfmUser}", 16, Modifier.padding(bottom = 8.dp), color = c.fg)
+            SettingToggle(
+                "отправлять прослушивания",
+                "Трек засчитывается, когда прослушана половина (или 4 минуты). Если нет сети, отправится позже.",
+                store.lastfmOn
+            ) { store.chooseLastfmOn(!store.lastfmOn) }
+            Spacer(Modifier.height(8.dp))
+            MetroTextButton("выйти из Last.fm", null) { store.logoutLastfm() }
+        } else {
+            MText(
+                "Создайте бесплатный API-ключ на last.fm/api/account/create, затем введите ключ, секрет и свой логин с паролем. " +
+                    "Пароль нигде не сохраняется: он нужен один раз, чтобы войти.",
+                14, Modifier.padding(bottom = 12.dp), color = c.subtle
+            )
+            LfField("API key", lfKey) { lfKey = it }
+            LfField("shared secret", lfSecret) { lfSecret = it }
+            LfField("логин Last.fm", lfUser) { lfUser = it }
+            LfField("пароль", lfPass, password = true) { lfPass = it }
+            MetroTextButton(if (lfBusy) "вход…" else "войти", null) {
+                if (!lfBusy && lfKey.isNotBlank() && lfSecret.isNotBlank() && lfUser.isNotBlank() && lfPass.isNotEmpty()) {
+                    lfBusy = true
+                    lfMsg = null
+                    gifScope.launch {
+                        val r = LastFm.login(lfKey.trim(), lfSecret.trim(), lfUser.trim(), lfPass)
+                        lfBusy = false
+                        if (r.session != null) {
+                            store.saveLastfm(lfKey.trim(), lfSecret.trim(), r.session, r.name ?: lfUser.trim())
+                            lfPass = ""
+                        } else {
+                            lfMsg = r.error
+                        }
+                    }
+                } else if (!lfBusy) {
+                    lfMsg = "заполните все четыре поля"
+                }
+            }
+        }
+        lfMsg?.let { MText(it, 14, Modifier.padding(top = 10.dp), color = c.accent) }
 
         MText("ГИФКА ВМЕСТО НОТЫ", 12, Modifier.padding(top = 20.dp, bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
         MText(
@@ -912,6 +975,25 @@ fun AddToPlaylistDialog(app: MetroApp, trackId: Long, onNew: () -> Unit, onDismi
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onNew() }
                 .padding(vertical = 10.dp),
             color = Color(0xFFBBBBBB)
+        )
+    }
+}
+
+/** Поле ввода в настройках (ключ, логин, пароль). */
+@Composable
+private fun LfField(hint: String, value: String, password: Boolean = false, onChange: (String) -> Unit) {
+    val c = Metro.colors
+    Box(Modifier.fillMaxWidth().padding(bottom = 10.dp).skinBorder(2.dp, c.fg).padding(12.dp)) {
+        if (value.isEmpty()) MText(hint, 18, color = c.inactive, maxLines = 1)
+        BasicTextField(
+            value = value,
+            onValueChange = onChange,
+            singleLine = true,
+            textStyle = TextStyle(color = c.fg, fontSize = 18.sp, fontFamily = MetroFont, fontWeight = FontWeight.Light),
+            cursorBrush = SolidColor(c.fg),
+            visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
+            keyboardOptions = KeyboardOptions(keyboardType = if (password) KeyboardType.Password else KeyboardType.Text),
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
