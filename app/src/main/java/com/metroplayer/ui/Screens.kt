@@ -121,10 +121,29 @@ private fun Tile(
     }
 }
 
+/** Содержимое плитки: значок и (если есть) число рядом. Без значков — просто крупное число, как раньше. */
 @Composable
-private fun CountTile(count: Int, label: String, color: Color, size: Dp, enter: Int, onClick: () -> Unit) {
+private fun TileTop(icon: String, count: String?, icons: Boolean) {
+    if (!icons) {
+        if (count != null) MText(count, 44, color = Color.White, lh = 1f)
+        return
+    }
+    Row(verticalAlignment = Alignment.Bottom) {
+        MetroIcon(icon, 40.dp, Color.White)
+        if (count != null) {
+            Spacer(Modifier.width(12.dp))
+            MText(count, 30, color = Color.White, lh = 1f, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun CountTile(
+    count: Int, label: String, color: Color, size: Dp, enter: Int,
+    icon: String, icons: Boolean, onClick: () -> Unit
+) {
     Tile(color, size, size, label, onClick, enter) {
-        MText("$count", 44, color = Color.White, lh = 1f)
+        TileTop(icon, "$count", icons)
     }
 }
 
@@ -208,13 +227,16 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
     val shade1 = lerp(accent, Color.Black, 0.18f)
     val shade2 = lerp(accent, Color.Black, 0.32f)
 
-    val items = listOf(
-        MenuEntry("поиск") { push(Screen.Search) },
-        MenuEntry("перемешать всё") { radio() },
-        MenuEntry("обновить библиотеку") { scope.launch { repo.load() } },
-        MenuEntry("настройки") { push(Screen.Settings) },
-        MenuEntry("о приложении") { push(Screen.About) }
-    )
+    val items = buildList<MenuEntry> {
+        add(MenuEntry("поиск") { push(Screen.Search) })
+        add(MenuEntry("перемешать всё") { radio() })
+        // скрытые плитки остаются доступны из меню
+        if (!store.showMixTile) add(MenuEntry("daily mix") { push(Screen.DailyMix) })
+        if (!store.showStatsTile) add(MenuEntry("статистика") { push(Screen.Stats) })
+        add(MenuEntry("обновить библиотеку") { scope.launch { repo.load() } })
+        add(MenuEntry("настройки") { push(Screen.Settings) })
+        add(MenuEntry("о приложении") { push(Screen.About) })
+    }
 
     Box(Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -239,15 +261,15 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     LiveTile(app, wide, tile, 0) { push(Screen.NowPlaying) }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CountTile(repo.artists.size, "исполнители", shade1, tile, 1) { push(Screen.Artists) }
-                        CountTile(repo.albums.size, "альбомы", shade2, tile, 2) { push(Screen.Albums) }
+                        CountTile(repo.artists.size, "исполнители", shade1, tile, 1, Ic.ARTIST, store.tileIcons) { push(Screen.Artists) }
+                        CountTile(repo.albums.size, "альбомы", shade2, tile, 2, Ic.ALBUM, store.tileIcons) { push(Screen.Albums) }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CountTile(store.playlists.size, "плейлисты", shade2, tile, 3) { push(Screen.Playlists) }
-                        CountTile(store.favorites.size, "избранное", shade1, tile, 4) { push(Screen.Favorites) }
+                        CountTile(store.playlists.size, "плейлисты", shade2, tile, 3, Ic.PLAYLIST, store.tileIcons) { push(Screen.Playlists) }
+                        CountTile(store.favorites.size, "избранное", shade1, tile, 4, Ic.HEART, store.tileIcons) { push(Screen.Favorites) }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CountTile(recentTracks(app).size, "недавние", shade1, tile, 5) { push(Screen.Recent) }
+                        CountTile(recentTracks(app).size, "недавние", shade1, tile, 5, Ic.RECENT, store.tileIcons) { push(Screen.Recent) }
                         Tile(shade2, tile, tile, "радио", { radio() }, 6) {
                             MetroIcon(Ic.RADIO, 44.dp, Color.White)
                         }
@@ -256,12 +278,22 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
                         val since = System.currentTimeMillis() - 7 * 86_400_000L
                         app.playLog.plays.count { it.time >= since }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Tile(shade2, tile, tile, "daily mix", { push(Screen.DailyMix) }, 7) {
-                            MText("MIX", 36, color = Color.White, lh = 1f)
-                        }
-                        Tile(shade1, tile, tile, "статистика · 7 дн.", { push(Screen.Stats) }, 8) {
-                            MText("$weekPlays", 44, color = Color.White, lh = 1f)
+                    if (store.showMixTile || store.showStatsTile) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (store.showMixTile) {
+                                Tile(shade2, tile, tile, "daily mix", { push(Screen.DailyMix) }, 7) {
+                                    if (store.tileIcons) {
+                                        TileTop(Ic.MIX, null, true)
+                                    } else {
+                                        MText("MIX", 36, color = Color.White, lh = 1f)
+                                    }
+                                }
+                            }
+                            if (store.showStatsTile) {
+                                Tile(shade1, tile, tile, "статистика · 7 дн.", { push(Screen.Stats) }, 8) {
+                                    TileTop(Ic.STATS, "$weekPlays", store.tileIcons)
+                                }
+                            }
                         }
                     }
                     Tile(shade1, wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }, 9) {
@@ -780,6 +812,23 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
             "В любом списке сразу откроются треки только этого формата, если они там есть. Если нет — покажутся все.",
             14, Modifier.padding(bottom = 20.dp), color = c.subtle
         )
+
+        MText("ГЛАВНЫЙ ЭКРАН", 12, Modifier.padding(top = 4.dp, bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+        SettingToggle(
+            "значки на плитках", "Рисунок рядом с числом на плитках главного экрана.",
+            store.tileIcons
+        ) { store.chooseTileIcons(!store.tileIcons) }
+        Spacer(Modifier.height(8.dp))
+        SettingToggle(
+            "плитка daily mix", "Если скрыта, daily mix остаётся в меню «···» на главном экране.",
+            store.showMixTile
+        ) { store.chooseShowMixTile(!store.showMixTile) }
+        Spacer(Modifier.height(8.dp))
+        SettingToggle(
+            "плитка статистики", "Если скрыта, статистика остаётся в меню «···» на главном экране.",
+            store.showStatsTile
+        ) { store.chooseShowStatsTile(!store.showStatsTile) }
+        Spacer(Modifier.height(20.dp))
 
         MText("ЭКВАЛАЙЗЕР", 12, Modifier.padding(top = 4.dp, bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
         SettingToggle(

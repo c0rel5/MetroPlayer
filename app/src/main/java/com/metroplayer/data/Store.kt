@@ -100,6 +100,29 @@ class Store(context: Context) {
     var mixIds by mutableStateOf(readIds("mixIds"))
         private set
 
+    // Главный экран: какие плитки показывать и рисовать ли на них значки
+    var showMixTile by mutableStateOf(prefs.getBoolean("showMix", true))
+        private set
+    var showStatsTile by mutableStateOf(prefs.getBoolean("showStats", true))
+        private set
+    var tileIcons by mutableStateOf(prefs.getBoolean("tileIcons", true))
+        private set
+
+    fun chooseShowMixTile(v: Boolean) {
+        showMixTile = v
+        prefs.edit().putBoolean("showMix", v).apply()
+    }
+
+    fun chooseShowStatsTile(v: Boolean) {
+        showStatsTile = v
+        prefs.edit().putBoolean("showStats", v).apply()
+    }
+
+    fun chooseTileIcons(v: Boolean) {
+        tileIcons = v
+        prefs.edit().putBoolean("tileIcons", v).apply()
+    }
+
     // вести ли журнал прослушиваний (статистика и Daily Mix)
     var statsOn by mutableStateOf(prefs.getBoolean("statsOn", true))
         private set

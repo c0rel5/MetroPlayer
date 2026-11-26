@@ -1,8 +1,12 @@
-## Metro Player 2.7
+## Metro Player 2.8
 
 **Install over your current version, no need to uninstall.** Every build is signed with the same key.
 
-### New in 2.7
+### New in 2.8
+- **Icons on the home tiles.** Artists, albums, playlists, favorites, recent, daily mix and statistics now have their own drawn icons next to the numbers. They can be turned off in Settings → *Home screen* → *icons on tiles*.
+- **Hide tiles you do not need.** Settings → *Home screen* lets you hide the *daily mix* and *statistics* tiles. Hidden ones stay available from the "···" menu on the home screen.
+
+### 2.7 · New
 - **Listening statistics.** A new *statistics* tile: time listened, number of plays, unique tracks and artists, a day-by-day chart, your top tracks and artists, and a listening streak. Choose 7 days, 30 days or all time. A play counts after 30 seconds (or half of a short track).
 - **Daily Mix.** A new *daily mix* tile builds a 30-track mix from your listening history: your favorites, new tracks by artists you like, and tracks you have not heard for a while. It stays the same for the whole day and can be rebuilt from the "···" menu.
 - **Recently played.** The *recent* list now also shows the track that is playing right now, and the last five tracks appear on the statistics screen.

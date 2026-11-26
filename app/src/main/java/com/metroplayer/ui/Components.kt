@@ -117,6 +117,12 @@ object Ic {
     const val REPEAT = "M4 11V9a3 3 0 0 1 3-3h13M17 3l3 3-3 3M20 13v2a3 3 0 0 1-3 3H4M7 21l-3-3 3-3"
     const val REPEAT_ONE = "M4 11V9a3 3 0 0 1 3-3h13M17 3l3 3-3 3M20 13v2a3 3 0 0 1-3 3H4M7 21l-3-3 3-3M11 10.5l1.5-1v6"
     const val HEART = "M12 20C5 15.6 4 11 4 9a4 4 0 0 1 8-1.2A4 4 0 0 1 20 9c0 2-1 6.6-8 11z"
+    const val ARTIST = "M8 8a4 4 0 1 0 8 0a4 4 0 1 0-8 0M4 21a8 8 0 0 1 16 0"
+    const val ALBUM = "M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M9.5 12a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0"
+    const val PLAYLIST = "M4 6h12M4 11h12M4 16h7M17 20V12l4-1M17 20a2 2 0 1 1-4 0a2 2 0 1 1 4 0"
+    const val RECENT = "M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v5l3.5 2"
+    const val MIX = "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"
+    const val STATS = "M5 20V12M12 20V5M19 20V9M3 20h18"
     const val NOTE = "M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0a3 3 0 1 1 6 0M20 16a3 3 0 1 1-6 0a3 3 0 1 1 6 0"
 }
 
