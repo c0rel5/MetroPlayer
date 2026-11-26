@@ -1,8 +1,14 @@
-## Metro Player 2.6.2
+## Metro Player 2.7
 
 **Install over your current version, no need to uninstall.** Every build is signed with the same key.
 
-### Fixed in 2.6.2
+### New in 2.7
+- **Listening statistics.** A new *statistics* tile: time listened, number of plays, unique tracks and artists, a day-by-day chart, your top tracks and artists, and a listening streak. Choose 7 days, 30 days or all time. A play counts after 30 seconds (or half of a short track).
+- **Daily Mix.** A new *daily mix* tile builds a 30-track mix from your listening history: your favorites, new tracks by artists you like, and tracks you have not heard for a while. It stays the same for the whole day and can be rebuilt from the "···" menu.
+- **Recently played.** The *recent* list now also shows the track that is playing right now, and the last five tracks appear on the statistics screen.
+- **Privacy.** Everything is calculated on your phone, nothing is sent anywhere. You can turn history tracking off or clear it at any time.
+
+### 2.6.2 · Fixed
 - The "all tracks" tile shows the normal note icon again. The GIF is used only instead of the "♪" note in the lyrics (intros, instrumental breaks), not in buttons or menus.
 
 ### 2.6.1 · Fixed

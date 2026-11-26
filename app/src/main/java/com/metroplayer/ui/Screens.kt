@@ -67,6 +67,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.metroplayer.MetroApp
 import com.metroplayer.data.EqPresets
+import com.metroplayer.data.Stats
 import com.metroplayer.data.Track
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -83,6 +84,8 @@ sealed interface Screen {
     data object About : Screen
     data object Search : Screen
     data object Recent : Screen
+    data object Stats : Screen
+    data object DailyMix : Screen
     data class ArtistTracks(val name: String) : Screen
     data class AlbumTracks(val albumId: Long) : Screen
     data class PlaylistTracks(val id: Long) : Screen
@@ -244,12 +247,24 @@ fun HomeScreen(app: MetroApp, push: (Screen) -> Unit) {
                         CountTile(store.favorites.size, "избранное", shade1, tile, 4) { push(Screen.Favorites) }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        CountTile(store.history.size, "недавние", shade1, tile, 5) { push(Screen.Recent) }
+                        CountTile(recentTracks(app).size, "недавние", shade1, tile, 5) { push(Screen.Recent) }
                         Tile(shade2, tile, tile, "радио", { radio() }, 6) {
                             MetroIcon(Ic.RADIO, 44.dp, Color.White)
                         }
                     }
-                    Tile(shade1, wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }, 7) {
+                    val weekPlays = remember(app.playLog.version) {
+                        val since = System.currentTimeMillis() - 7 * 86_400_000L
+                        app.playLog.plays.count { it.time >= since }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Tile(shade2, tile, tile, "daily mix", { push(Screen.DailyMix) }, 7) {
+                            MText("MIX", 36, color = Color.White, lh = 1f)
+                        }
+                        Tile(shade1, tile, tile, "статистика · 7 дн.", { push(Screen.Stats) }, 8) {
+                            MText("$weekPlays", 44, color = Color.White, lh = 1f)
+                        }
+                    }
+                    Tile(shade1, wide, tile, "все треки · ${repo.tracks.size}", { push(Screen.AllTracks) }, 9) {
                         MetroIcon(Ic.NOTE, 44.dp, Color.White)
                     }
                 }
@@ -425,7 +440,8 @@ fun TrackListScreen(
     pop: () -> Unit,
     onAddToPlaylist: (Long) -> Unit,
     playlistId: Long? = null,
-    alphabetical: Boolean = false
+    alphabetical: Boolean = false,
+    extraMenu: List<MenuEntry> = emptyList()
 ) {
     val st = app.player.state
     val store = app.store
@@ -474,6 +490,7 @@ fun TrackListScreen(
                 pop()
             })
         }
+        addAll(extraMenu)
         add(MenuEntry("настройки") { push(Screen.Settings) })
     }
 
@@ -812,6 +829,13 @@ fun SettingsScreen(app: MetroApp, push: (Screen) -> Unit) {
             store.lyricsInNotif
         ) { store.chooseLyricsInNotif(!store.lyricsInNotif) }
 
+        MText("СТАТИСТИКА", 12, Modifier.padding(top = 20.dp, bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+        SettingToggle(
+            "вести статистику прослушиваний",
+            "Нужна для экрана статистики и Daily Mix. Данные хранятся только на этом телефоне.",
+            store.statsOn
+        ) { store.chooseStatsOn(!store.statsOn) }
+
         MText("ГИФКА ВМЕСТО НОТЫ", 12, Modifier.padding(top = 20.dp, bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
         MText(
             "Показывается в тексте песни на проигрышах и вступлениях, когда в строке нет слов.",
@@ -993,4 +1017,207 @@ private fun EqBand(label: String, gain: Float, onChange: (Float) -> Unit) {
 private fun eqGainAt(y: Float, height: Float, pad: Float): Float {
     val frac = ((y - pad) / (height - 2f * pad)).coerceIn(0f, 1f)
     return (EqPresets.MAX_DB - frac * 2f * EqPresets.MAX_DB).roundToInt().toFloat()
+}
+
+/* ═══════════════════ Недавние, Daily Mix, статистика ═══════════════════ */
+
+/** Недавно прослушанные: сначала то, что играет сейчас, затем история (новые сверху). */
+fun recentTracks(app: MetroApp): List<Track> {
+    val ids = ArrayList<Long>()
+    app.player.state.current?.let { ids.add(it.id) }
+    app.store.history.forEach { if (it !in ids) ids.add(it) }
+    return ids.mapNotNull { app.repo.find(it) }
+}
+
+@Composable
+fun DailyMixScreen(app: MetroApp, push: (Screen) -> Unit, pop: () -> Unit, onAdd: (Long) -> Unit) {
+    LaunchedEffect(app.repo.loaded, app.repo.tracks.size) { app.ensureDailyMix() }
+    val tracks = app.store.mixIds.mapNotNull { app.repo.find(it) }
+    TrackListScreen(
+        app, "ДЛЯ ВАС", "daily mix", tracks, push, pop, onAdd,
+        extraMenu = listOf(MenuEntry("собрать заново") { app.ensureDailyMix(force = true) })
+    )
+}
+
+@Composable
+private fun StatCard(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .height(92.dp)
+            .background(Metro.colors.accent)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        MText(value, 32, color = Color.White, lh = 1f, maxLines = 1)
+        MText(label, 13, color = Color.White.copy(alpha = 0.85f), maxLines = 1)
+    }
+}
+
+@Composable
+fun StatsScreen(app: MetroApp, push: (Screen) -> Unit) {
+    val c = Metro.colors
+    val log = app.playLog
+    val repo = app.repo
+    val version = log.version
+    var period by remember { mutableIntStateOf(1) }   // 0 — 7 дней, 1 — 30 дней, 2 — всё время
+    var confirmClear by remember { mutableStateOf(false) }
+    val pad = Modifier.padding(horizontal = 24.dp)
+
+    val since = remember(period, version) {
+        val now = System.currentTimeMillis()
+        when (period) {
+            0 -> now - 7 * 86_400_000L
+            1 -> now - 30 * 86_400_000L
+            else -> 0L
+        }
+    }
+    val artistOf: (Long) -> String? = { repo.find(it)?.artist }
+    val summary = remember(since, version, repo.tracks.size) { Stats.summary(log, since, artistOf) }
+    val streak = remember(version) { Stats.streak(log) }
+    val chartDays = if (period == 0) 7 else 30
+    val daily = remember(version, chartDays) { Stats.dailyMs(log, chartDays) }
+    val topTracks = remember(since, version, repo.tracks.size) {
+        Stats.topTracks(log, since, 5).mapNotNull { (id, n) -> repo.find(id)?.let { it to n } }
+    }
+    val topArtists = remember(since, version, repo.tracks.size) { Stats.topArtists(log, since, 5, artistOf) }
+    val recent = recentTracks(app).take(5)
+    val empty = log.plays.isEmpty() && log.listens.isEmpty()
+
+    ListFrame(
+        app, "МУЗЫКА", "статистика", push,
+        menuItems = listOf(MenuEntry("настройки") { push(Screen.Settings) })
+    ) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            OptionGroup(
+                "период",
+                listOf("7 дней" to 0, "30 дней" to 1, "всё время" to 2),
+                period,
+                pad.padding(bottom = 12.dp)
+            ) { period = it }
+
+            if (empty) {
+                MText(
+                    if (app.store.statsOn) {
+                        "Статистика появится, когда вы послушаете несколько треков."
+                    } else {
+                        "Ведение статистики выключено. Включить: настройки → «статистика»."
+                    },
+                    16, pad.padding(top = 8.dp), color = c.subtle
+                )
+            } else {
+                Row(pad, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    StatCard(fmtTotal(summary.listenMs), "время", Modifier.weight(1f))
+                    StatCard("${summary.plays}", "прослушиваний", Modifier.weight(1f))
+                }
+                Row(pad.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    StatCard("${summary.tracks}", "разных треков", Modifier.weight(1f))
+                    StatCard("${summary.artists}", "исполнителей", Modifier.weight(1f))
+                }
+                if (streak > 0) {
+                    MText(
+                        "серия: ${plural(streak, "день", "дня", "дней")} подряд",
+                        16, pad.padding(top = 12.dp), color = c.fg
+                    )
+                }
+
+                MText("ПО ДНЯМ", 12, pad.padding(top = 24.dp, bottom = 8.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+                val maxMs = (daily.maxOrNull() ?: 0L).coerceAtLeast(1L)
+                Row(
+                    pad.fillMaxWidth().height(110.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (chartDays > 10) 2.dp else 6.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    daily.forEach { ms ->
+                        val frac = (ms.toFloat() / maxMs).coerceIn(0.03f, 1f)
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight(frac)
+                                .background(if (ms > 0L) c.accent else c.inactive)
+                        )
+                    }
+                }
+                Row(pad.padding(top = 4.dp)) {
+                    MText("${chartDays} дн. назад", 12, color = c.subtle)
+                    Spacer(Modifier.weight(1f))
+                    MText("рекорд: ${fmtTotal(maxMs)}", 12, color = c.subtle)
+                    Spacer(Modifier.weight(1f))
+                    MText("сегодня", 12, color = c.subtle)
+                }
+
+                if (topTracks.isNotEmpty()) {
+                    MText("ЧАЩЕ ВСЕГО", 12, pad.padding(top = 24.dp, bottom = 4.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+                    val queue = topTracks.map { it.first }
+                    topTracks.forEachIndexed { i, (t, n) ->
+                        TrackRow(
+                            title = t.title,
+                            subtitle = "${t.artist} · ${plural(n, "раз", "раза", "раз")}",
+                            highlighted = app.player.state.current?.id == t.id,
+                            onClick = {
+                                app.player.playTracks(queue, i)
+                                push(Screen.NowPlaying)
+                            }
+                        )
+                    }
+                }
+
+                if (topArtists.isNotEmpty()) {
+                    MText("ИСПОЛНИТЕЛИ", 12, pad.padding(top = 24.dp, bottom = 4.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+                    val top = topArtists.first().second.coerceAtLeast(1)
+                    topArtists.forEach { (name, n) ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .metroPress(onClick = { push(Screen.ArtistTracks(name)) })
+                                .padding(horizontal = 24.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                MText(name, 18, maxLines = 1)
+                                Box(
+                                    Modifier
+                                        .padding(top = 4.dp)
+                                        .fillMaxWidth(n.toFloat() / top)
+                                        .height(4.dp)
+                                        .background(c.accent)
+                                )
+                            }
+                            MText("$n", 16, Modifier.padding(start = 12.dp), color = c.subtle)
+                        }
+                    }
+                }
+            }
+
+            if (recent.isNotEmpty()) {
+                MText("НЕДАВНО ПРОСЛУШАНО", 12, pad.padding(top = 24.dp, bottom = 4.dp), FontWeight.SemiBold, c.accent, spacing = 2f)
+                recent.forEachIndexed { i, t ->
+                    TrackRow(
+                        title = t.title,
+                        subtitle = "${t.artist} · ${fmt(t.durationMs)}",
+                        highlighted = app.player.state.current?.id == t.id,
+                        onClick = {
+                            app.player.playTracks(recent, i)
+                            push(Screen.NowPlaying)
+                        }
+                    )
+                }
+                MetroTextButton("все недавние", null, pad.padding(top = 8.dp)) { push(Screen.Recent) }
+            }
+
+            if (!empty) {
+                MetroTextButton(
+                    if (confirmClear) "точно очистить? нажмите ещё раз" else "очистить статистику",
+                    null, pad.padding(top = 20.dp)
+                ) {
+                    if (confirmClear) {
+                        log.clear()
+                        confirmClear = false
+                    } else {
+                        confirmClear = true
+                    }
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
 }

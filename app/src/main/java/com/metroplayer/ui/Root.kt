@@ -167,10 +167,9 @@ private fun ScreenHost(
         Screen.Settings -> SettingsScreen(app, push)
         Screen.About -> AboutScreen(app, push)
         Screen.Search -> SearchScreen(app, push)
-        Screen.Recent -> TrackListScreen(
-            app, "МУЗЫКА", "недавние",
-            store.history.mapNotNull { repo.find(it) }, push, pop, onAdd
-        )
+        Screen.Recent -> TrackListScreen(app, "МУЗЫКА", "недавние", recentTracks(app), push, pop, onAdd)
+        Screen.Stats -> StatsScreen(app, push)
+        Screen.DailyMix -> DailyMixScreen(app, push, pop, onAdd)
         is Screen.ArtistTracks -> TrackListScreen(
             app, "ИСПОЛНИТЕЛЬ", screen.name,
             repo.tracks.filter { it.artist == screen.name }, push, pop, onAdd, alphabetical = true

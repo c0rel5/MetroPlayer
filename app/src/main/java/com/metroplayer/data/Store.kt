@@ -92,6 +92,30 @@ class Store(context: Context) {
         saveEq()
     }
 
+    // Daily Mix: на какой день собран, «соль» для ручного обновления и сами треки
+    var mixDay by mutableStateOf(prefs.getLong("mixDay", -1L))
+        private set
+    var mixSalt by mutableStateOf(prefs.getInt("mixSalt", 0))
+        private set
+    var mixIds by mutableStateOf(readIds("mixIds"))
+        private set
+
+    // вести ли журнал прослушиваний (статистика и Daily Mix)
+    var statsOn by mutableStateOf(prefs.getBoolean("statsOn", true))
+        private set
+
+    fun saveMix(day: Long, salt: Int, ids: List<Long>) {
+        mixDay = day
+        mixSalt = salt
+        mixIds = ids
+        prefs.edit().putLong("mixDay", day).putInt("mixSalt", salt).putString("mixIds", ids.joinToString(",")).apply()
+    }
+
+    fun chooseStatsOn(v: Boolean) {
+        statsOn = v
+        prefs.edit().putBoolean("statsOn", v).apply()
+    }
+
     // Анимация текста песни: 0 — новая (плывёт, слова загораются), 1 — старая (слайд окна строк)
     var lyricsAnim by mutableIntStateOf(prefs.getInt("lyricsAnim", 0))
         private set

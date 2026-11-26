@@ -26,6 +26,7 @@ Live tiles, flat typography, smooth motion, synced lyrics and a built-in equaliz
 | 🔄 **Cover flip** | Tap the cover on the Now Playing screen: the card flips over and the lyrics appear on its back. |
 | 🎚 **Equalizer** | Five bands, twelve ready-made presets (Bass, Rock, Pop, Jazz, Vocal, Electronic…) and manual sliders. It works on all music in the app. |
 | 🖼 **Your own GIF** | Replace the GIF that is shown instead of the "♪" note during instrumental breaks with any GIF or image you like. |
+| 📊 **Statistics and Daily Mix** | Listening time, plays, top tracks and artists, a day-by-day chart and a listening streak. A 30-track *Daily Mix* is built every day from your history. Everything stays on the phone. |
 | 🔎 **Library tools** | Global search, quick jump by letter (like Windows Phone), format filter (`.flac`, `.mp3`…) with a default format in Settings, favorites, playlists, history. |
 | ⏱ **Playback extras** | Sleep timer, speed 0.75×–2×, shuffle, repeat one / all, queue editing, background playback with a notification and lock-screen controls. |
 
